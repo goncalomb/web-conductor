@@ -1,0 +1,27 @@
+[api]
+
+[entryPoints]
+    [entryPoints.http]
+        address = ":80"
+    [entryPoints.https]
+        address = ":443"
+    [entryPoints.traefik]
+        address = ":81"
+
+[log]
+    filePath = "/var/log/traefik/traefik.log"
+    format = "json"
+    level = "INFO"
+
+[accessLog]
+    filePath = "/var/log/traefik/access.log"
+    format = "json"
+    [accessLog.fields.headers.names]
+        "User-Agent" = "keep"
+        "Referer" = "keep"
+
+[providers.file]
+    filename = "/etc/traefik/traefik-dynamic.toml"
+
+[providers.docker]
+    exposedbydefault = false

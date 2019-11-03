@@ -1,0 +1,13 @@
+[http.routers.traefik]
+    rule="PathPrefix(`/`)"
+    service="api@internal"
+    entryPoints=["traefik"]
+    middlewares=["auth"]
+    [http.routers.traefik.tls]
+
+[http.middlewares.auth.basicAuth]
+    # htpasswd -nB admin
+    # password: admin
+    users = [
+        "admin:$2y$05$/2fEzWkXRrlWT.dOLn.jXOadzvVLz3dR9VBkMaVk9wuvJx9wVH2Xe"
+    ]

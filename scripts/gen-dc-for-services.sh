@@ -4,7 +4,7 @@ set -e
 cd "$(dirname -- "$0")/.."
 DIR=$(pwd)
 
-echo 'version: "3"'
+echo 'version: "3.7"'
 echo
 echo 'services:'
 

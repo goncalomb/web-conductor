@@ -3,7 +3,7 @@ FROM traefik:v2.0
 RUN apk --no-cache add logrotate
 
 ADD traefik.toml /etc/traefik/traefik.toml
-ADD traefik-dynamic.toml /etc/traefik/traefik-dynamic.toml
+ADD traefik-dynamic.toml /etc/traefik/traefik-dynamic.orig.toml
 
 ADD bootstrap.sh /
 

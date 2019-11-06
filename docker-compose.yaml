@@ -11,6 +11,8 @@ services:
       - "81:81"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/letsencrypt/live/:/etc/letsencrypt/live/:ro
+      - /etc/letsencrypt/archive/:/etc/letsencrypt/archive/:ro
       - ./log/traefik/:/var/log/traefik/
   limbo:
     build: ./limbo

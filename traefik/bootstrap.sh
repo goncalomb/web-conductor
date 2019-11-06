@@ -11,8 +11,39 @@ signal() {
 }
 trap signal INT TERM
 
+# create final traefik config file
+
+cp /etc/traefik/traefik-dynamic.orig.toml /etc/traefik/traefik-dynamic.toml
+
+# find Let's Encrypt certs on the volume
+
+LETSENCRYPT_DIR=/etc/letsencrypt/live
+if [ -d "$LETSENCRYPT_DIR" ]; then
+    echo "bootstrap: searching '/etc/letsencrypt/live' for tls certificates"
+    echo >> /etc/traefik/traefik-dynamic.toml
+    for FOLDER in "$LETSENCRYPT_DIR"/*; do
+        [ -d "$FOLDER" ] || continue
+        CERT_FILE="$FOLDER/cert.pem"
+        KEY_FILE="$FOLDER/privkey.pem"
+        if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
+            echo "bootstrap: found tls certificate '$FOLDER'"
+            {
+                echo "[[tls.certificates]]"
+                echo "    certFile = \"$CERT_FILE\""
+                echo "    keyFile = \"$KEY_FILE\""
+            } >> /etc/traefik/traefik-dynamic.toml
+        else
+            echo "bootstrap: missing files in '$FOLDER', skipping"
+        fi
+    done
+else
+    echo "bootstrap: '/etc/letsencrypt/live' not found, skipping certificate search"
+fi
+
 # in addition to traefik, we need syslogd and crond for log rotation
 # start everything as background jobs and wait for any to finish
+
+echo "bootstrap: starting traefik"
 
 syslogd -n &
 crond -f &

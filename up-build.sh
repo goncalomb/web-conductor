@@ -1,6 +1,8 @@
 #!/bin/bash
 
 set -e
+shopt -s nullglob
+
 cd "$(dirname -- "$0")"
 DIR=$(pwd)
 
@@ -16,14 +18,23 @@ update-repo() {
     fi
 }
 
-for FILE in services/*.conf; do (
-    NAME=$(basename -- "$FILE")
-    NAME=${NAME%.conf}
-    . "$FILE"
-
+service-update-repo() {(
+    . "$1"
     cd "$DIR/workspace/services"
-
     if [[ -n "$REPO_HOST" ]]; then update-repo "$REPO_HOST" "$REPO_NAME"; fi
-); done
+)}
 
-./scripts/docker-compose.sh up -d --remove-orphans --build
+if [ -z "$*" ]; then
+    for FILE in services/*.conf; do
+        service-update-repo "$FILE"
+    done
+else
+    for NAME in "$@"; do
+        FILE="services/$NAME.conf"
+        if [ -f "$FILE" ]; then
+            service-update-repo "$FILE"
+        fi
+    done
+fi
+
+./scripts/docker-compose.sh up -d --remove-orphans --build "$@"

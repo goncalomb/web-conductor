@@ -11,3 +11,7 @@
     users = [
         "admin:$2y$05$/2fEzWkXRrlWT.dOLn.jXOadzvVLz3dR9VBkMaVk9wuvJx9wVH2Xe"
     ]
+
+[http.middlewares.302https.redirectScheme]
+    scheme = "https"
+    permanent = false

@@ -31,7 +31,9 @@ for FILE in services/*.conf; do
     echo "      - \"traefik.enable=true\""
     echo "      - \"traefik.http.routers.$NAME-http.entryPoints=http\""
     echo "      - \"traefik.http.routers.$NAME-http.rule=Host(\`$HOST\`)\""
+    echo "      - \"traefik.http.routers.$NAME-http.middlewares=302https@file"\"
     echo "      - \"traefik.http.routers.$NAME-https.entryPoints=https\""
     echo "      - \"traefik.http.routers.$NAME-https.rule=Host(\`$HOST\`)\""
+    echo "      - \"traefik.http.routers.$NAME-https.middlewares=302https@file"\"
     echo "      - \"traefik.http.routers.$NAME-https.tls"\"
 done

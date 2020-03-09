@@ -33,7 +33,7 @@ Create the service configuration file 'services/some-service.conf':
     REPO_NAME="some-service"
     HOST="example.com"
 
-ATM, you will need to create the `Dockerfile` for the service (`services/some-service.dockerfile`). In the future it will use the `Dockerfile` from the repository if it has one.
+It will build the container using the `Dockerfile` from the repository or `services/some-service.dockerfile`.
 
 ### Declare other services
 

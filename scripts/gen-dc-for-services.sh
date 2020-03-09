@@ -20,10 +20,14 @@ for FILE in services/*.conf; do
     NAME=${NAME%.conf}
     . "$FILE"
 
+    CONTEXT="$DIR/workspace/services/$REPO_NAME"
+
     echo "  $NAME:"
     echo "    build:"
-    echo "      context: \"$DIR/workspace/services/$REPO_NAME\""
-    echo "      dockerfile: \"$DIR/services/$NAME.dockerfile\""
+    echo "      context: \"$CONTEXT\""
+    if [ ! -f "$CONTEXT/Dockerfile" ]; then
+        echo "      dockerfile: \"$DIR/services/$NAME.dockerfile\""
+    fi
 
     echo "    restart: always"
 

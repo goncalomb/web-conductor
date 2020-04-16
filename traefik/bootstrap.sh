@@ -23,7 +23,7 @@ if [ -d "$LETSENCRYPT_DIR" ]; then
     echo >> /etc/traefik/traefik-dynamic.toml
     for FOLDER in "$LETSENCRYPT_DIR"/*; do
         [ -d "$FOLDER" ] || continue
-        CERT_FILE="$FOLDER/cert.pem"
+        CERT_FILE="$FOLDER/fullchain.pem"
         KEY_FILE="$FOLDER/privkey.pem"
         if [ -f "$CERT_FILE" ] && [ -f "$KEY_FILE" ]; then
             echo "bootstrap: found tls certificate '$FOLDER'"

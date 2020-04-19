@@ -3,7 +3,7 @@
 set -e
 shopt -s nullglob
 
-cd "$(dirname -- "$0")"
+cd -- "$(dirname -- "$0")"
 DIR=$(pwd)
 
 mkdir -p workspace/services
@@ -42,23 +42,29 @@ update-repo() {
 }
 
 service-update-repo() {(
-    GIT_MTIME=
-    . "$1"
+    GIT_MTIME=1
+    REPO_HOST=${WC_REPO_HOSTS[$1]}
+    REPO_NAME=${WC_REPO_NAMES[$1]}
     cd "$DIR/workspace/services"
     if [[ -n "$REPO_HOST" ]]; then update-repo "$REPO_HOST" "$REPO_NAME"; fi
 )}
 
+DATA=$(./web-conductor.py bash)
+eval $DATA
+
 if [ -z "$*" ]; then
-    for FILE in services/*.conf; do
-        service-update-repo "$FILE"
+    for I in "${!WC_SERVICES[@]}"; do
+        service-update-repo "$I"
     done
 else
     for NAME in "$@"; do
-        FILE="services/$NAME.conf"
-        if [ -f "$FILE" ]; then
-            service-update-repo "$FILE"
-        fi
+        for I in "${!WC_SERVICES[@]}"; do
+            if [[ "$NAME" == "${WC_SERVICES[$I]}" ]]; then
+                service-update-repo "$I"
+                break
+            fi
+        done
     done
 fi
 
-./scripts/docker-compose.sh up -d --remove-orphans --build "$@"
+./web-conductor.py --sudo up -- --build "$@"

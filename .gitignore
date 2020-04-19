@@ -1,2 +1,4 @@
 /workspace
 /log
+/docker-compose-*.yaml
+!/docker-compose-000.yaml

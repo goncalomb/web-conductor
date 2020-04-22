@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, re, io, sys, glob, signal, subprocess, argparse, yaml, shlex
+import os, re, io, sys, glob, signal, subprocess, argparse, yaml, shlex, time, tempfile
 
 dir_root = os.path.realpath(os.path.dirname(__file__))
 
@@ -70,15 +70,17 @@ def create_composer_files():
                 yaml.safe_dump(y_new, fp, default_flow_style=False)
     return files
 
-def call_process(args):
+def call_process(*args, **kwargs):
     def void_handler(*_): pass
     prev_term = signal.getsignal(signal.SIGTERM)
     prev_int = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGTERM, void_handler)
     signal.signal(signal.SIGINT, void_handler)
-    subprocess.call(args)
-    signal.signal(signal.SIGTERM, prev_term)
-    signal.signal(signal.SIGINT, prev_int)
+    try:
+        return subprocess.call(*args, **kwargs)
+    finally:
+        signal.signal(signal.SIGTERM, prev_term)
+        signal.signal(signal.SIGINT, prev_int)
 
 def call_composer(args, args_pre=[], keep_files=False):
     files = create_composer_files()
@@ -93,6 +95,42 @@ def call_composer(args, args_pre=[], keep_files=False):
     if not keep_files:
         for f in files:
             os.unlink(f)
+
+def volume_inspect(name, use_sudo=False):
+    args = ['sudo'] if use_sudo else []
+    args.extend(['docker', 'volume', 'inspect', name])
+    print('inspecting volume \'%s\'...' % (name))
+    return call_process(args, stdout=subprocess.DEVNULL) == 0
+
+def volume_backup(name, use_sudo=False):
+    if not volume_inspect(name, use_sudo):
+        return False
+
+    dir_backup = os.path.join(dir_root, 'backups', 'volumes')
+    os.makedirs(dir_backup, exist_ok=True)
+
+    fd, tmp_file = tempfile.mkstemp(suffix='.tar.gz', dir=dir_backup)
+    os.close(fd)
+
+    print('creating backup...')
+    args = ['sudo'] if use_sudo else []
+    args.extend([
+        'docker', 'run', '--init', '--rm',
+        '-v', '%s:/tmp/volume:ro' % (name),
+        '-v', '%s:/tmp/file' % (tmp_file),
+        'busybox', 'tar', '-f', '/tmp/file', '-czC', '/tmp', 'volume'
+    ])
+    ret = call_process(args)
+
+    if ret != 0:
+        print("docker exited with non-zero status code (%s), aborting..." % (ret))
+        os.unlink(tmp_file)
+        return False
+
+    final_name = '%s_%s.tar.gz' % (name, str(int(time.time())))
+    print('saved to \'%s\'' % (final_name))
+    os.rename(tmp_file, os.path.join(dir_backup, final_name))
+    return True
 
 def bash_dump():
     data={}
@@ -132,6 +170,15 @@ if __name__ == "__main__":
     parser_compose = subparsers.add_parser('compose', description='call docker-compose')
     parser_compose.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
 
+    parser_volume = subparsers.add_parser('volume', description='volume operations')
+    parser_volume_sub = parser_volume.add_subparsers(title='commands', dest='command_volume')
+    parser_volume_sub.required = True
+
+    parser_volume_backup = parser_volume_sub.add_parser('backup', description='volume backup')
+    parser_volume_backup.add_argument('name', help='volume name')
+    # parser_volume_restore = parser_volume_sub.add_parser('restore', description='volume restore')
+    # parser_volume_restore.add_argument('file', help='backup file')
+
     subparsers.add_parser('bash', description='dump service data for bash processing')
 
     aliased_composer_cmds = {
@@ -147,6 +194,11 @@ if __name__ == "__main__":
 
     if args.command == 'compose':
         call_composer(args.args, ['sudo'] if args.sudo else [])
+
+    if args.command == 'volume':
+        if args.command_volume == 'backup':
+            if not volume_backup(args.name, args.sudo):
+                exit(1)
 
     if args.command == 'bash':
         if not bash_dump():

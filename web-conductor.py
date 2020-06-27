@@ -44,10 +44,10 @@ def convert_services_yaml(y):
                         labels.append('traefik.http.services.%s.loadbalancer.server.port=%s' % (s, conductor['port']))
                     labels.append('traefik.http.routers.%s-http.entryPoints=http' % (s))
                     labels.append('traefik.http.routers.%s-http.rule=Host(`%s`)' % (s, conductor['host']))
-                    labels.append('traefik.http.routers.%s-http.middlewares=302https@file' % (s))
+                    if not 'https-redirect' in conductor or conductor['https-redirect']:
+                        labels.append('traefik.http.routers.%s-http.middlewares=302https@file' % (s))
                     labels.append('traefik.http.routers.%s-https.entryPoints=https' % (s))
                     labels.append('traefik.http.routers.%s-https.rule=Host(`%s`)' % (s, conductor['host']))
-                    labels.append('traefik.http.routers.%s-https.middlewares=302https@file' % (s))
                     labels.append('traefik.http.routers.%s-https.tls' % (s))
     return y_new
 

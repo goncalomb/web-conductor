@@ -25,29 +25,47 @@ Install 'docker' and 'docker-compose'. Clone this repository.
 
 ## Configuration
 
-### Declare services (websites with git repositories)
+### Declare Services
 
-Create the service configuration file 'services/some-service.conf':
+Services are declared on `docker-compose-XXX.yaml` files. These can be normal docker-compose services or with some extras...
 
-    REPO_HOST="git@github.com:goncalomb"
-    REPO_NAME="some-service"
-    HOST="example.com"
+The services can have an extra 'web-conductor' property with some configurations:
 
-It will build the container using the `Dockerfile` from the repository or `services/some-service.dockerfile`.
+    version: "3.7"
 
-### Declare other services
+    services:
+      some-website:
+        web-conductor:
+          repo-host: git@github.com:goncalomb
+          repo-name: some-website
+          host: example.com
+          https-redirect: True (defaults to True)
 
-Add them to `docker-compose.yaml`.
+These extra configurations will be used to build the services and create `traefik` labels.
+
+For this to work you need to use `web-conductor.py` to interact with docker...
+
+Create as many `docker-compose-XXX.yaml` files as you want (e.g. docker-compose-001.yaml, docker-compose-002.yaml).
+
+### Using
+
+To interact with the services use `web-conductor.py`, this script "compiles" all the `docker-compose-XXX.yaml` files before calling `docker-compose`.
+
+    usage: web-conductor [-h] [--sudo] {compose,volume,bash,up,down} ...
+
+* `./web-conductor.py up` - alias for `compose up -d --remove-orphans`
+* `./web-conductor.py down` - alias for `compose down --remove-orphans`
+* `./web-conductor.py compose` - call docker-compose
+* `./web-conductor.py bash` - dump service data for bash processing (internal use)
+* `./web-conductor.py volume backup` - backup named volume
+
+#### Fetch (WIP)
+
+Use `./fetch.sh` to clone and build all services declared using the special `web-conductor` configuration... This will eventually be included in `web-conductor.py`.
 
 ### Change traefik configuration
 
 Edit `traefik/traefik.toml` and `traefik/traefik-dynamic.toml`.
-
-## Start
-
-To build the services and start everything:
-
-    ./up-build.sh
 
 ## License
 

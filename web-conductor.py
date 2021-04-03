@@ -183,7 +183,10 @@ if __name__ == "__main__":
 
     aliased_composer_cmds = {
         'up': ['up', '-d', '--remove-orphans'],
-        'down': ['down', '--remove-orphans']
+        'up-build': ['up', '--build', '-d', '--remove-orphans'],
+        'up-recreate': ['up', '-d', '--remove-orphans', '--force-recreate'],
+        'down': ['down', '--remove-orphans'],
+        'logs': ['logs', '-f', '--tail=50'],
     }
 
     for cmd in aliased_composer_cmds:

@@ -67,4 +67,4 @@ else
     done
 fi
 
-./web-conductor.py --sudo up -- --build "$@"
+./web-conductor.py --sudo up-build "$@"

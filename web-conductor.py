@@ -187,6 +187,7 @@ if __name__ == "__main__":
         'up-recreate': ['up', '-d', '--remove-orphans', '--force-recreate'],
         'down': ['down', '--remove-orphans'],
         'logs': ['logs', '-f', '--tail=50'],
+        'traefik-reload-dynamic': ['exec', 'traefik', 'touch', '/etc/traefik/traefik-dynamic.toml'],
     }
 
     for cmd in aliased_composer_cmds:

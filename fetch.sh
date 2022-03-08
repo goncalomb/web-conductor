@@ -32,12 +32,17 @@ update-repo() {
     fi
 
     if [ -n "$GIT_MTIME" ]; then (
-        echo "Touching files (git modified dates)..."
+        echo "Touching files..."
         cd "$2"
+        # touch using git dates
         git ls-tree -r -t HEAD --name-only | while IFS= read -r f; do
             t=$(git log -n 1 --format="%ct" -- "$f")
             [ -n "$t" ] && touch -m -d "@$t" "$f"
         done
+        # touch using .mtimes, this can be dangerous (arbitrary code execution, bad repos)
+        if [ -f .mtimes ]; then
+            bash .mtimes
+        fi
     ); fi
 }
 

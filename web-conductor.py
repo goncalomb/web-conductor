@@ -49,6 +49,17 @@ def convert_services_yaml(y):
                     labels.append('traefik.http.routers.%s-https.entryPoints=https' % (s))
                     labels.append('traefik.http.routers.%s-https.rule=Host(`%s`)' % (s, conductor['host']))
                     labels.append('traefik.http.routers.%s-https.tls' % (s))
+                if 'redirect' in conductor:
+                    for key in conductor['redirect']:
+                        labels.append('traefik.http.routers.%s-http.entryPoints=http' % (key))
+                        labels.append('traefik.http.routers.%s-http.rule=Host(`%s`)' % (key, conductor['redirect'][key]['host']))
+                        labels.append('traefik.http.routers.%s-http.middlewares=302https@file' % (key))
+                        labels.append('traefik.http.routers.%s-https.entryPoints=https' % (key))
+                        labels.append('traefik.http.routers.%s-https.rule=Host(`%s`)' % (key, conductor['redirect'][key]['host']))
+                        labels.append('traefik.http.routers.%s-https.tls' % (key))
+                        labels.append('traefik.http.routers.%s-https.middlewares=%s' % (key, key))
+                        labels.append('traefik.http.middlewares.%s.redirectregex.regex=.*' % (key))
+                        labels.append('traefik.http.middlewares.%s.redirectregex.replacement=%s' % (key, conductor['redirect'][key]['location']))
     return y_new
 
 def create_composer_files():

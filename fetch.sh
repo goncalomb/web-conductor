@@ -33,25 +33,38 @@ update-repo() {
 
     if [ -n "$GIT_MTIME" ]; then (
         echo "Touching files..."
-        cd "$2"
-        # touch using git dates
-        git ls-tree -r -t HEAD --name-only | while IFS= read -r f; do
-            t=$(git log -n 1 --format="%ct" -- "$f")
-            [ -n "$t" ] && touch -m -d "@$t" "$f"
-        done
-        # touch using .mtimes, this can be dangerous (arbitrary code execution, bad repos)
-        if [ -f .mtimes ]; then
-            bash .mtimes
-        fi
+        (
+            cd "$2"
+            # touch using git dates
+            git ls-tree -r -t HEAD --name-only | while IFS= read -r f; do
+                t=$(git log -n 1 --format="%ct" -- "$f")
+                [ -n "$t" ] && touch -m -d "@$t" "$f"
+            done
+            # touch using .mtimes, this can be dangerous (arbitrary code execution, bad repos)
+            if [ -f .mtimes ]; then
+                bash .mtimes
+            fi
+        )
     ); fi
+
+    if [ -n "$3" ]; then
+        echo "Running build command..."
+        (
+            cd "$2"
+            "$3" # build command
+        )
+    fi
 }
 
 service-update-repo() {(
     GIT_MTIME=1
     REPO_HOST=${WC_REPO_HOSTS[$1]}
     REPO_NAME=${WC_REPO_NAMES[$1]}
+    BUILD_CMD=${WC_BUILD_CMDS[$1]}
     cd "$DIR/workspace/services"
-    if [[ -n "$REPO_HOST" ]]; then update-repo "$REPO_HOST" "$REPO_NAME"; fi
+    if [ -n "$REPO_HOST" ]; then
+        update-repo "$REPO_HOST" "$REPO_NAME" "$BUILD_CMD"
+    fi
 )}
 
 DATA=$(./web-conductor.py bash)

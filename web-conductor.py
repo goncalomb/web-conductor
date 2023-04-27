@@ -159,16 +159,21 @@ def bash_dump():
     data_services = []
     data_repo_hosts = []
     data_repo_names = []
+    data_build_cmds = []
     for s in data:
         data_services.append(s)
         data_repo_hosts.append(str(data[s]['repo-host']) if 'repo-host' in data[s] else "")
         data_repo_names.append(str(data[s]['repo-name']) if 'repo-name' in data[s] else "")
+        data_build_cmds.append(str(data[s]['build']) if 'build' in data[s] else "")
+    data_services = map(shlex.quote, data_services)
     data_services = map(shlex.quote, data_services)
     data_repo_hosts = map(shlex.quote, data_repo_hosts)
     data_repo_names = map(shlex.quote, data_repo_names)
+    data_build_cmds = map(shlex.quote, data_build_cmds)
     print('WC_SERVICES=(%s)' % (' '.join(data_services)))
     print('WC_REPO_HOSTS=(%s)' % (' '.join(data_repo_hosts)))
     print('WC_REPO_NAMES=(%s)' % (' '.join(data_repo_names)))
+    print('WC_BUILD_CMDS=(%s)' % (' '.join(data_build_cmds)))
     return True
 
 if __name__ == "__main__":

@@ -97,7 +97,7 @@ def call_composer(args, args_pre=[], keep_files=False):
     files = create_composer_files()
     all_args = []
     all_args.extend(args_pre)
-    all_args.append('docker-compose')
+    all_args.extend(['docker', 'compose'])
     for f in files:
         all_args.append('-f')
         all_args.append(f)

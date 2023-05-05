@@ -13,6 +13,61 @@ def load_yaml(file):
     with io.open(file, 'r') as fp:
         return yaml.safe_load(fp)
 
+def traefik_labels_from_route(service_name, route):
+    labels = []
+
+    def create_router(name, entrypoint, config, tls=False):
+        router_config_prefix='traefik.http.routers.%s-%s' % (name, entrypoint)
+
+        # entry point
+        labels.append('%s.entryPoints=%s' % (router_config_prefix, entrypoint))
+
+        # rule
+        rule = []
+        if 'host' in config:
+            rule.append('Host(`%s`)' % (config['host']))
+        if 'path' in config:
+            rule.append('(Path(`%s`) || PathPrefix(`%s/`))' % (config['path'], config['path']))
+        labels.append('%s.rule=%s' % (router_config_prefix, ' && '.join(rule)))
+
+        # tls
+        if tls:
+            labels.append('%s.tls' % (router_config_prefix))
+
+        # middlewares
+        middlewares = []
+        if not tls and (not 'https-redirect' in config or config['https-redirect']):
+            middlewares.append('302https@file')
+        if 'admin' in config and config['admin']:
+            middlewares.append('auth@file')
+        if tls and 'location' in config and config['location']:
+            labels.append('traefik.http.middlewares.%s.redirectregex.regex=.*' % (name))
+            labels.append('traefik.http.middlewares.%s.redirectregex.replacement=%s' % (name, config['location']))
+            middlewares.append(name)
+        if middlewares:
+            labels.append('%s.middlewares=%s' % (router_config_prefix, ','.join(middlewares)))
+
+
+    if 'host' in route or 'path' in route:
+        if 'port' in route:
+            labels.append('traefik.http.services.%s.loadbalancer.server.port=%s' % (service_name, route['port']))
+
+        if 'admin' in route and route['admin']:
+            create_router(service_name, 'traefik', route, True)
+        else:
+            create_router(service_name, 'http', route)
+            create_router(service_name, 'https', route, True)
+
+    if 'redirect' in route:
+        for key in route['redirect']:
+            create_router(key, 'http', route['redirect'][key])
+            create_router(key, 'https', route['redirect'][key], True)
+
+    if labels:
+        labels.insert(0, 'traefik.enable=true')
+
+    return labels
+
 def convert_services_yaml(y):
     y_new = {
         'version': y['version'],
@@ -26,11 +81,8 @@ def convert_services_yaml(y):
                 del services[s]['web-conductor']
                 data = {
                     'restart': 'always',
-                    'labels': [
-                        'traefik.enable=true'
-                    ]
+                    'labels': []
                 }
-                labels = data['labels']
                 y_new['services'][s] = data
                 if 'repo-host' in conductor and 'repo-name' in conductor:
                     data['build'] = {
@@ -39,27 +91,7 @@ def convert_services_yaml(y):
                     dockerfile = os.path.join(dir_root, 'dockerfiles', s + '.dockerfile')
                     if os.path.isfile(dockerfile):
                         data['build']['dockerfile'] = dockerfile
-                if 'host' in conductor:
-                    if 'port' in conductor:
-                        labels.append('traefik.http.services.%s.loadbalancer.server.port=%s' % (s, conductor['port']))
-                    labels.append('traefik.http.routers.%s-http.entryPoints=http' % (s))
-                    labels.append('traefik.http.routers.%s-http.rule=Host(`%s`)' % (s, conductor['host']))
-                    if not 'https-redirect' in conductor or conductor['https-redirect']:
-                        labels.append('traefik.http.routers.%s-http.middlewares=302https@file' % (s))
-                    labels.append('traefik.http.routers.%s-https.entryPoints=https' % (s))
-                    labels.append('traefik.http.routers.%s-https.rule=Host(`%s`)' % (s, conductor['host']))
-                    labels.append('traefik.http.routers.%s-https.tls' % (s))
-                if 'redirect' in conductor:
-                    for key in conductor['redirect']:
-                        labels.append('traefik.http.routers.%s-http.entryPoints=http' % (key))
-                        labels.append('traefik.http.routers.%s-http.rule=Host(`%s`)' % (key, conductor['redirect'][key]['host']))
-                        labels.append('traefik.http.routers.%s-http.middlewares=302https@file' % (key))
-                        labels.append('traefik.http.routers.%s-https.entryPoints=https' % (key))
-                        labels.append('traefik.http.routers.%s-https.rule=Host(`%s`)' % (key, conductor['redirect'][key]['host']))
-                        labels.append('traefik.http.routers.%s-https.tls' % (key))
-                        labels.append('traefik.http.routers.%s-https.middlewares=%s' % (key, key))
-                        labels.append('traefik.http.middlewares.%s.redirectregex.regex=.*' % (key))
-                        labels.append('traefik.http.middlewares.%s.redirectregex.replacement=%s' % (key, conductor['redirect'][key]['location']))
+                data['labels'].extend(traefik_labels_from_route(s, conductor))
     return y_new
 
 def create_composer_files():
@@ -179,6 +211,7 @@ def bash_dump():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='web-conductor')
     parser.add_argument('--sudo', action='store_true', help='use sudo for calling docker-compose')
+    parser.add_argument('--keep-files', action='store_true', help='keep temporary .yaml files for debugging')
 
     subparsers = parser.add_subparsers(title='commands', dest='command')
     subparsers.required = True
@@ -213,7 +246,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == 'compose':
-        call_composer(args.args, ['sudo'] if args.sudo else [])
+        call_composer(args.args, ['sudo'] if args.sudo else [], args.keep_files)
 
     if args.command == 'volume':
         if args.command_volume == 'backup':
@@ -227,4 +260,4 @@ if __name__ == "__main__":
     if args.command in aliased_composer_cmds:
         cmd_args = list(aliased_composer_cmds[args.command])
         cmd_args.extend(args.args)
-        call_composer(cmd_args, ['sudo'] if args.sudo else [])
+        call_composer(cmd_args, ['sudo'] if args.sudo else [], args.keep_files)

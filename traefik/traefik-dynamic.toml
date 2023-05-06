@@ -5,6 +5,11 @@
     middlewares=["auth"]
     [http.routers.traefik.tls]
 
+[http.routers.metrics]
+    rule="PathPrefix(`/metrics`)"
+    service="prometheus@internal"
+    entryPoints=["metrics"]
+
 [http.middlewares.auth.basicAuth]
     # htpasswd -nB admin
     # password: admin

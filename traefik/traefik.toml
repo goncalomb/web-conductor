@@ -1,5 +1,9 @@
 [api]
 
+[metrics]
+    [metrics.prometheus]
+        manualRouting = true
+
 [entryPoints]
     [entryPoints.http]
         address = ":80"
@@ -7,6 +11,8 @@
         address = ":443"
     [entryPoints.traefik]
         address = ":81"
+    [entryPoints.metrics]
+        address = ":82"
 
 [log]
     filePath = "/var/log/traefik/traefik.log"

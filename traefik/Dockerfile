@@ -1,4 +1,4 @@
-FROM traefik:v2.0
+FROM traefik:v2.10.1
 
 RUN apk --no-cache add logrotate
 

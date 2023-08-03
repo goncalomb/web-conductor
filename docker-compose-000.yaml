@@ -24,6 +24,8 @@ services:
       - "traefik.http.routers.limbo-https.rule=PathPrefix(`/`)"
       - "traefik.http.routers.limbo-https.priority=1"
       - "traefik.http.routers.limbo-https.tls"
+    environment:
+      - "LIMBO_DEBUG="
   prometheus:
     image: prom/prometheus:v2.37.8
     volumes:

@@ -1,5 +1,1 @@
-/workspace
-/backups
-/log
-/docker-compose-*.yaml
-!/docker-compose-000.yaml
+inventory.yml

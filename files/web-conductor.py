@@ -1,23 +1,43 @@
-#!/usr/bin/python3
+#!/usr/bin/env -S pipx run --path
 
-import os, re, io, sys, glob, signal, subprocess, argparse, yaml, shlex, time, tempfile
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#   "pyyaml",
+# ]
+# ///
+
+import os
+import re
+import io
+import sys
+import signal
+import subprocess
+import argparse
+import yaml
+import shlex
+import time
+import tempfile
 
 dir_root = os.path.realpath(os.path.dirname(__file__))
+
 
 def find_compose_files():
     files = [f for f in os.listdir(dir_root) if re.match('^docker-compose-\\d{3}.yaml$', f)]
     files.sort()
     return [(f, os.path.join(dir_root, f)) for f in files]
 
+
 def load_yaml(file):
     with io.open(file, 'r') as fp:
         return yaml.safe_load(fp)
+
 
 def traefik_labels_from_route(service_name, route):
     labels = []
 
     def create_router(name, entrypoint, config, tls=False):
-        router_config_prefix='traefik.http.routers.%s-%s' % (name, entrypoint)
+        router_config_prefix = 'traefik.http.routers.%s-%s' % (name, entrypoint)
 
         # entry point
         labels.append('%s.entryPoints=%s' % (router_config_prefix, entrypoint))
@@ -36,7 +56,7 @@ def traefik_labels_from_route(service_name, route):
 
         # middlewares
         middlewares = []
-        if not tls and (not 'https-redirect' in config or config['https-redirect']):
+        if not tls and ('https-redirect' not in config or config['https-redirect']):
             middlewares.append('302https@file')
         if 'admin' in config and config['admin']:
             middlewares.append('auth@file')
@@ -46,7 +66,6 @@ def traefik_labels_from_route(service_name, route):
             middlewares.append(name)
         if middlewares:
             labels.append('%s.middlewares=%s' % (router_config_prefix, ','.join(middlewares)))
-
 
     if 'host' in route or 'path' in route:
         if 'port' in route:
@@ -67,6 +86,7 @@ def traefik_labels_from_route(service_name, route):
         labels.insert(0, 'traefik.enable=true')
 
     return labels
+
 
 def convert_services_yaml(y):
     y_new = {
@@ -94,6 +114,7 @@ def convert_services_yaml(y):
                 data['labels'].extend(traefik_labels_from_route(s, conductor))
     return y_new
 
+
 def create_composer_files():
     files = []
     for (f, fpath) in find_compose_files():
@@ -113,6 +134,7 @@ def create_composer_files():
                 yaml.safe_dump(y_new, fp, default_flow_style=False)
     return files
 
+
 def call_process(*args, **kwargs):
     def void_handler(*_): pass
     prev_term = signal.getsignal(signal.SIGTERM)
@@ -124,6 +146,7 @@ def call_process(*args, **kwargs):
     finally:
         signal.signal(signal.SIGTERM, prev_term)
         signal.signal(signal.SIGINT, prev_int)
+
 
 def call_composer(args, args_pre=[], keep_files=False):
     files = create_composer_files()
@@ -139,11 +162,13 @@ def call_composer(args, args_pre=[], keep_files=False):
         for f in files:
             os.unlink(f)
 
+
 def volume_inspect(name, use_sudo=False):
     args = ['sudo'] if use_sudo else []
     args.extend(['docker', 'volume', 'inspect', name])
     print('inspecting volume \'%s\'...' % (name))
     return call_process(args, stdout=subprocess.DEVNULL) == 0
+
 
 def volume_backup(name, use_sudo=False):
     if not volume_inspect(name, use_sudo):
@@ -175,8 +200,9 @@ def volume_backup(name, use_sudo=False):
     os.rename(tmp_file, os.path.join(dir_backup, final_name))
     return True
 
+
 def bash_dump():
-    data={}
+    data = {}
     for (f, fpath) in find_compose_files():
         y = load_yaml(fpath)
         services = y.get('services', {})
@@ -184,7 +210,8 @@ def bash_dump():
             for s in services:
                 if 'web-conductor' in services[s]:
                     if s in data:
-                        print('[web-conductor] duplicate \'web-conductor\' configuration for service \'%s\'' % (s), file=sys.stderr)
+                        print('[web-conductor] duplicate \'web-conductor\' configuration for service \'%s\'' %
+                              (s), file=sys.stderr)
                         return False
                     data[s] = services[s]['web-conductor'] or {}
 
@@ -207,6 +234,7 @@ def bash_dump():
     print('WC_REPO_NAMES=(%s)' % (' '.join(data_repo_names)))
     print('WC_BUILD_CMDS=(%s)' % (' '.join(data_build_cmds)))
     return True
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='web-conductor')

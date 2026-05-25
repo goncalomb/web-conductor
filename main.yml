@@ -12,3 +12,15 @@
     ansible.posix.synchronize:
       src: files/
       dest: "{{ wc_dir }}/"
+
+  - name: Check user files
+    ansible.builtin.stat:
+      path: "user/"
+    register: stat_user
+    delegate_to: localhost
+
+  - name: Copy user files
+    ansible.posix.synchronize:
+      src: user/
+      dest: "{{ wc_dir }}/"
+    when: stat_user.stat.isdir | default(false)

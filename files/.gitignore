@@ -1,5 +1,9 @@
 /workspace
 /backups
 /log
-/docker-compose-*.yaml
-!/docker-compose-000.yaml
+
+compose.*.yaml
+compose.*.yml
+compose.yaml
+compose.yml
+!compose.base.yml

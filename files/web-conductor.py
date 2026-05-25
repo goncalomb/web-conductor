@@ -23,8 +23,7 @@ dir_root = os.path.realpath(os.path.dirname(__file__))
 
 
 def find_compose_files():
-    files = [f for f in os.listdir(dir_root) if re.match('^docker-compose-\\d{3}.yaml$', f)]
-    files.sort()
+    files = [f for f in os.listdir(dir_root) if re.match(r'^compose\.\w+\.ya?ml$', f)]
     return [(f, os.path.join(dir_root, f)) for f in files]
 
 
@@ -90,15 +89,13 @@ def traefik_labels_from_route(service_name, route):
 
 def convert_services_yaml(y):
     y_new = {
-        'version': y['version'],
         'services': {}
     }
     services = y.get('services', {})
     if services:
         for s in services:
-            if 'web-conductor' in services[s]:
-                conductor = services[s]['web-conductor'] or {}
-                del services[s]['web-conductor']
+            if 'x-web-conductor' in services[s]:
+                conductor = services[s]['x-web-conductor'] or {}
                 data = {
                     'restart': 'always',
                     'labels': []
@@ -116,22 +113,28 @@ def convert_services_yaml(y):
 
 
 def create_composer_files():
-    files = []
+    f_final = os.path.join(dir_root, 'compose.yml')
+    files = [f_final]
+    all_files = []
     for (f, fpath) in find_compose_files():
+        f_name, f_ext = os.path.splitext(f)
         y = load_yaml(fpath)
-        f_o_path = os.path.join(dir_root, f[:-5] + '-O.web-conductor' + f[-5:])
-        f_x_path = os.path.join(dir_root, f[:-5] + '-X.web-conductor' + f[-5:])
+        if not y:
+            continue
+        f_x_path = os.path.join(dir_root, f_name + '.override' + f_ext)
 
         y_new = convert_services_yaml(y)
+        files.append(f_x_path)
+        all_files.append((fpath, f_x_path))
+        with io.open(f_x_path, 'w+') as fp:
+            yaml.safe_dump(y_new, fp, default_flow_style=False)
 
-        files.append(f_o_path)
-        with io.open(f_o_path, 'w+') as fp:
-            yaml.safe_dump(y, fp, default_flow_style=False)
-
-        if y_new['services']:
-            files.append(f_x_path)
-            with io.open(f_x_path, 'w+') as fp:
-                yaml.safe_dump(y_new, fp, default_flow_style=False)
+    with io.open(f_final, 'w+') as fp:
+        dat = {
+            'name': 'wc',
+            'include': [{'path': f} for f in all_files]
+        }
+        yaml.safe_dump(dat, fp, default_flow_style=False)
     return files
 
 
@@ -150,17 +153,12 @@ def call_process(*args, **kwargs):
 
 def call_composer(args, args_pre=[], keep_files=False):
     files = create_composer_files()
-    all_args = []
-    all_args.extend(args_pre)
-    all_args.extend(['docker', 'compose'])
-    for f in files:
-        all_args.append('-f')
-        all_args.append(f)
-    all_args.extend(args)
-    call_process(all_args)
-    if not keep_files:
-        for f in files:
-            os.unlink(f)
+    try:
+        return call_process(args_pre + ['docker', 'compose'] + args)
+    finally:
+        if not keep_files:
+            for f in files:
+                os.unlink(f)
 
 
 def volume_inspect(name, use_sudo=False):
@@ -208,12 +206,12 @@ def bash_dump():
         services = y.get('services', {})
         if services:
             for s in services:
-                if 'web-conductor' in services[s]:
+                if 'x-web-conductor' in services[s]:
                     if s in data:
-                        print('[web-conductor] duplicate \'web-conductor\' configuration for service \'%s\'' %
+                        print('[web-conductor] duplicate \'x-web-conductor\' configuration for service \'%s\'' %
                               (s), file=sys.stderr)
                         return False
-                    data[s] = services[s]['web-conductor'] or {}
+                    data[s] = services[s]['x-web-conductor'] or {}
 
     data_services = []
     data_repo_hosts = []
@@ -244,6 +242,8 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(title='commands', dest='command')
     subparsers.required = True
 
+    parser_config = subparsers.add_parser('config', description='write final compose file')
+
     parser_compose = subparsers.add_parser('compose', description='call docker-compose')
     parser_compose.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
 
@@ -272,6 +272,9 @@ if __name__ == "__main__":
         p.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
 
     args = parser.parse_args()
+
+    if args.command == 'config':
+        create_composer_files()
 
     if args.command == 'compose':
         call_composer(args.args, ['sudo'] if args.sudo else [], args.keep_files)

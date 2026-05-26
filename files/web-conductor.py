@@ -112,9 +112,13 @@ def convert_services_yaml(y):
     return y_new
 
 
-def create_composer_files():
+def create_composer_files(recreate=False):
     f_final = os.path.join(dir_root, 'compose.yml')
-    files = [f_final]
+
+    if os.path.isfile(f_final) and not recreate:
+        return
+    print("recreating configuration files...", file=sys.stderr)
+
     all_files = []
     for (f, fpath) in find_compose_files():
         f_name, f_ext = os.path.splitext(f)
@@ -124,7 +128,6 @@ def create_composer_files():
         f_x_path = os.path.join(dir_root, f_name + '.override' + f_ext)
 
         y_new = convert_services_yaml(y)
-        files.append(f_x_path)
         all_files.append((fpath, f_x_path))
         with io.open(f_x_path, 'w+') as fp:
             yaml.safe_dump(y_new, fp, default_flow_style=False)
@@ -135,7 +138,7 @@ def create_composer_files():
             'include': [{'path': f} for f in all_files]
         }
         yaml.safe_dump(dat, fp, default_flow_style=False)
-    return files
+    return
 
 
 def call_process(*args, **kwargs):
@@ -151,14 +154,9 @@ def call_process(*args, **kwargs):
         signal.signal(signal.SIGINT, prev_int)
 
 
-def call_composer(args, args_pre=[], keep_files=False):
-    files = create_composer_files()
-    try:
-        return call_process(args_pre + ['docker', 'compose'] + args)
-    finally:
-        if not keep_files:
-            for f in files:
-                os.unlink(f)
+def call_composer(args, args_pre=[]):
+    create_composer_files()
+    return call_process(args_pre + ['docker', 'compose'] + args)
 
 
 def volume_inspect(name, use_sudo=False):
@@ -237,7 +235,6 @@ def bash_dump():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='web-conductor')
     parser.add_argument('--sudo', action='store_true', help='use sudo for calling docker-compose')
-    parser.add_argument('--keep-files', action='store_true', help='keep temporary .yaml files for debugging')
 
     subparsers = parser.add_subparsers(title='commands', dest='command')
     subparsers.required = True
@@ -274,10 +271,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == 'config':
-        create_composer_files()
+        create_composer_files(True)
 
     if args.command == 'compose':
-        call_composer(args.args, ['sudo'] if args.sudo else [], args.keep_files)
+        call_composer(args.args, ['sudo'] if args.sudo else [])
 
     if args.command == 'volume':
         if args.command_volume == 'backup':
@@ -291,4 +288,4 @@ if __name__ == "__main__":
     if args.command in aliased_composer_cmds:
         cmd_args = list(aliased_composer_cmds[args.command])
         cmd_args.extend(args.args)
-        call_composer(cmd_args, ['sudo'] if args.sudo else [], args.keep_files)
+        call_composer(cmd_args, ['sudo'] if args.sudo else [])

@@ -39,3 +39,18 @@
         {% for user in wc_auth_users %}
         {{ user }}
         {% endfor %}
+
+  - name: Create configuration files
+    ansible.builtin.command:
+      chdir: "{{ wc_dir }}"
+      argv: ['./web-conductor.py', 'config']
+    register: shell_result
+    changed_when: shell_result.stdout | length > 0
+
+  - name: Start services
+    ansible.builtin.command:
+      chdir: "{{ wc_dir }}"
+      argv: ['./fetch.sh']
+    register: shell_result
+    changed_when: shell_result.stdout | length > 0
+    when: wc_start

@@ -3,6 +3,8 @@
 set -e
 shopt -s nullglob
 
+# XXX: this logic should eventually be moved to web-conductor.py
+
 cd -- "$(dirname -- "$0")"
 DIR=$(pwd)
 
@@ -40,10 +42,6 @@ update-repo() {
                 t=$(git log -n 1 --format="%ct" -- "$f")
                 [ -n "$t" ] && touch -m -d "@$t" "$f"
             done
-            # touch using .mtimes, this can be dangerous (arbitrary code execution, bad repos)
-            if [ -f .mtimes ]; then
-                bash .mtimes
-            fi
         )
     ); fi
 
@@ -85,4 +83,4 @@ else
     done
 fi
 
-./web-conductor.py --sudo up-build "$@"
+./web-conductor.py up-build "$@"

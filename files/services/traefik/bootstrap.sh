@@ -11,16 +11,13 @@ signal() {
 }
 trap signal INT TERM
 
-# create final traefik config file
-
-cp /etc/traefik/traefik-dynamic.orig.toml /etc/traefik/traefik-dynamic.toml
-
 # find Let's Encrypt certs on the volume
 
 LETSENCRYPT_DIR=/etc/letsencrypt/live
+CONF_FILE=/etc/traefik/dynamic/certificates.toml
+: >"$CONF_FILE"
 if [ -d "$LETSENCRYPT_DIR" ]; then
     echo "bootstrap: searching '/etc/letsencrypt/live' for tls certificates"
-    echo >> /etc/traefik/traefik-dynamic.toml
     for FOLDER in "$LETSENCRYPT_DIR"/*; do
         [ -d "$FOLDER" ] || continue
         CERT_FILE="$FOLDER/fullchain.pem"
@@ -31,7 +28,7 @@ if [ -d "$LETSENCRYPT_DIR" ]; then
                 echo "[[tls.certificates]]"
                 echo "    certFile = \"$CERT_FILE\""
                 echo "    keyFile = \"$KEY_FILE\""
-            } >> /etc/traefik/traefik-dynamic.toml
+            } >>"$CONF_FILE"
         else
             echo "bootstrap: missing files in '$FOLDER', skipping"
         fi

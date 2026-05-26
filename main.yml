@@ -24,3 +24,18 @@
       src: user/
       dest: "{{ wc_dir }}/"
     when: stat_user.stat.isdir | default(false)
+
+  - name: Create secrets directory
+    ansible.builtin.file:
+      path: "{{ wc_dir }}/secrets"
+      state: directory
+      mode: '0700'
+
+  - name: Create htpasswd secret
+    ansible.builtin.copy:
+      dest: "{{ wc_dir }}/secrets/traefik_htpasswd"
+      mode: '0600'
+      content: |
+        {% for user in wc_auth_users %}
+        {{ user }}
+        {% endfor %}

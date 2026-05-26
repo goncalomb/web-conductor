@@ -12,6 +12,8 @@ services:
       - /etc/letsencrypt/live/:/etc/letsencrypt/live/:ro
       - /etc/letsencrypt/archive/:/etc/letsencrypt/archive/:ro
       - ./log/traefik/:/var/log/traefik/
+    secrets:
+      - traefik_htpasswd
   limbo:
     build: ./services/limbo
     restart: always
@@ -48,3 +50,7 @@ services:
 
 volumes:
   prometheus-data:
+
+secrets:
+  traefik_htpasswd:
+    file: ./secrets/traefik_htpasswd

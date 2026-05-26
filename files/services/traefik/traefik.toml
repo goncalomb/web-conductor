@@ -26,8 +26,8 @@
         "User-Agent" = "keep"
         "Referer" = "keep"
 
-[providers.file]
-    filename = "/etc/traefik/traefik-dynamic.toml"
-
 [providers.docker]
     exposedbydefault = false
+
+[providers.file]
+    directory = "/etc/traefik/dynamic"

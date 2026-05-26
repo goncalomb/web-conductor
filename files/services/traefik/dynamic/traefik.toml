@@ -11,11 +11,7 @@
     entryPoints=["metrics"]
 
 [http.middlewares.auth.basicAuth]
-    # htpasswd -nB admin
-    # password: admin
-    users = [
-        "admin:$2y$05$/2fEzWkXRrlWT.dOLn.jXOadzvVLz3dR9VBkMaVk9wuvJx9wVH2Xe"
-    ]
+    usersFile = "/run/secrets/traefik_htpasswd"
 
 [http.middlewares.302https.redirectScheme]
     scheme = "https"

@@ -19,12 +19,21 @@ import shlex
 import time
 import tempfile
 
+# TODO: consider using relative paths for compose files
 dir_root = os.path.realpath(os.path.dirname(__file__))
+dir_user = os.path.join(dir_root, 'user')
+
+os.chdir(dir_root)
 
 
 def find_compose_files():
-    files = [f for f in os.listdir(dir_root) if re.match(r'^compose\.\w+\.ya?ml$', f)]
-    return [(f, os.path.join(dir_root, f)) for f in files]
+    re_compose = r'^compose\.\w+\.ya?ml$'
+    for d in [dir_root, dir_user]:
+        if not os.path.isdir(d):
+            continue
+        for f in os.listdir(d):
+            if re.match(re_compose, f):
+                yield f, os.path.join(d, f)
 
 
 def load_yaml(file):
@@ -118,6 +127,7 @@ def create_composer_files(recreate=False):
     if os.path.isfile(f_final) and not recreate:
         return
     print("recreating configuration files...", file=sys.stderr)
+    # TODO: output changed files only so that ansible shows changes correctly
 
     all_files = []
     for (f, fpath) in find_compose_files():
@@ -125,7 +135,7 @@ def create_composer_files(recreate=False):
         y = load_yaml(fpath)
         if not y:
             continue
-        f_x_path = os.path.join(dir_root, f_name + '.override' + f_ext)
+        f_x_path = os.path.join(os.path.dirname(fpath), f_name + '.override' + f_ext)
 
         y_new = convert_services_yaml(y)
         all_files.append((fpath, f_x_path))

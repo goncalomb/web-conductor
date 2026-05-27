@@ -1,5 +1,9 @@
 # web-conductor
 
-```bash
-ansible-playbook main.yml
+`requirements.yaml`
+
+```yaml
+roles:
+  - name: goncalomb.web-conductor
+    src: git+https://github.com/goncalomb/web-conductor.git
 ```

@@ -1,6 +1,7 @@
 /workspace
 /secrets
 /backups
+/user
 /log
 
 compose.*.yaml

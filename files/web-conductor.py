@@ -7,17 +7,18 @@
 # ]
 # ///
 
+import argparse
+import io
 import os
 import re
-import io
-import sys
+import shlex
 import signal
 import subprocess
-import argparse
-import yaml
-import shlex
-import time
+import sys
 import tempfile
+import time
+
+import yaml
 
 # TODO: consider using relative paths for compose files
 dir_root = os.path.realpath(os.path.dirname(__file__))
@@ -27,13 +28,20 @@ os.chdir(dir_root)
 
 
 def find_compose_files():
+    # files are grouped by name so that user files can extend root files
+    # e.g. extend compose.base.yml
     re_compose = r'^compose\.\w+\.ya?ml$'
+    files = {}
     for d in [dir_root, dir_user]:
         if not os.path.isdir(d):
             continue
         for f in os.listdir(d):
             if re.match(re_compose, f):
-                yield f, os.path.join(d, f)
+                if f in files:
+                    files[f].append(os.path.join(d, f))
+                else:
+                    files[f] = [os.path.join(d, f)]
+    return files
 
 
 def load_yaml(file):
@@ -129,23 +137,25 @@ def create_composer_files(recreate=False):
     print("recreating configuration files...", file=sys.stderr)
     # TODO: output changed files only so that ansible shows changes correctly
 
-    all_files = []
-    for (f, fpath) in find_compose_files():
+    all_groups = []
+    for (f, fpaths) in find_compose_files().items():
         f_name, f_ext = os.path.splitext(f)
-        y = load_yaml(fpath)
-        if not y:
-            continue
-        f_x_path = os.path.join(os.path.dirname(fpath), f_name + '.override' + f_ext)
-
-        y_new = convert_services_yaml(y)
-        all_files.append((fpath, f_x_path))
-        with io.open(f_x_path, 'w+') as fp:
-            yaml.safe_dump(y_new, fp, default_flow_style=False)
+        f_group = []
+        for fpath in fpaths:
+            y = load_yaml(fpath)
+            if not y:
+                continue
+            f_x_path = os.path.join(os.path.dirname(fpath), f_name + '.override' + f_ext)
+            y_new = convert_services_yaml(y)
+            f_group.extend((fpath, f_x_path))
+            with io.open(f_x_path, 'w+') as fp:
+                yaml.safe_dump(y_new, fp, default_flow_style=False)
+        all_groups.append(f_group)
 
     with io.open(f_final, 'w+') as fp:
         dat = {
             'name': 'wc',
-            'include': [{'path': f} for f in all_files]
+            'include': [{'path': g} for g in all_groups]
         }
         yaml.safe_dump(dat, fp, default_flow_style=False)
     return

@@ -219,7 +219,7 @@ def volume_backup(name, use_sudo=False):
 
 def bash_dump():
     data = {}
-    for (f, fpath) in find_compose_files():
+    for fpath in (f for g in find_compose_files().values() for f in g):
         y = load_yaml(fpath)
         services = y.get('services', {})
         if services:

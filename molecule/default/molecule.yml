@@ -1,0 +1,16 @@
+---
+role_name_check: 2
+
+driver:
+  name: docker
+
+platforms:
+  - name: debian-13
+    pre_build_image: true
+    override_command: false
+    image: ghcr.io/hifis-net/debian-systemd:13
+    privileged: true
+    published_ports:
+      - 127.0.0.1:80:80
+      - 127.0.0.1:443:443
+      - 127.0.0.1:81:81

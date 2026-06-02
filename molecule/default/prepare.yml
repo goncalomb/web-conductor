@@ -1,0 +1,21 @@
+---
+- name: Prepare
+  hosts: all
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install Docker
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
+        apply:
+          become: true
+      vars:
+        docker_users:
+          - "{{ ansible_facts.user_id }}"
+        docker_daemon_options:
+          userland-proxy: false
+          features:
+            containerd-snapshotter: false # required for DinD (molecule)

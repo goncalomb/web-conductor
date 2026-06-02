@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+
+  tasks:
+    - name: Converge role
+      ansible.builtin.include_role:
+        name: goncalomb.web-conductor
+      vars:
+        wc_start: true

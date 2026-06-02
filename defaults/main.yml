@@ -1,5 +1,5 @@
 # installation directory on the target host
-wc_dir: "/home/{{ ansible_user }}/web-conductor"
+wc_dir: "{{ ansible_facts.user_dir }}/web-conductor"
 
 # directory for user files
 wc_user_dir: "{{ playbook_dir }}/user"

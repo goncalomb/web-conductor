@@ -1,0 +1,27 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.37.8
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.external-url=/prometheus
+    x-web-conductor:
+      path: /prometheus
+      admin: true
+
+  prometheus-node-exporter:
+    image: prom/node-exporter:v1.5.0
+
+  grafana:
+    image: grafana/grafana:9.5.1
+    volumes:
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+    x-web-conductor:
+      path: /grafana
+      admin: true
+
+volumes:
+  prometheus-data:

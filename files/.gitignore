@@ -10,4 +10,5 @@ compose.*.yaml
 compose.*.yml
 compose.yaml
 compose.yml
-!compose.base.yml
+!compose.proxy.yml
+!compose.metrics.yml

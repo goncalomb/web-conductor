@@ -8,248 +8,18 @@
 # ///
 
 import argparse
-import io
 import os
-import re
-import shlex
-import signal
-import subprocess
-import sys
-import tempfile
-import time
 
-import yaml
+from src.bash import bash_dump
+from src.compose import compose_files_create, compose_files_find
+from src.utils import call_compose
+from src.volume import volume_backup
 
 # TODO: consider using relative paths for compose files
 dir_root = os.path.realpath(os.path.dirname(__file__))
 dir_user = os.path.join(dir_root, 'user')
 
 os.chdir(dir_root)
-
-
-def find_compose_files():
-    # files are grouped by name so that user files can extend root files
-    # e.g. extend compose.base.yml
-    re_compose = r'^compose\.\w+\.ya?ml$'
-    files = {}
-    for d in [dir_root, dir_user]:
-        if not os.path.isdir(d):
-            continue
-        for f in os.listdir(d):
-            if re.match(re_compose, f):
-                if f in files:
-                    files[f].append(os.path.join(d, f))
-                else:
-                    files[f] = [os.path.join(d, f)]
-    return files
-
-
-def load_yaml(file):
-    with io.open(file, 'r') as fp:
-        return yaml.safe_load(fp)
-
-
-def traefik_labels_from_route(service_name, route):
-    labels = []
-
-    def create_router(name, entrypoint, config, tls=False):
-        router_config_prefix = 'traefik.http.routers.%s-%s' % (name, entrypoint)
-
-        # entry point
-        labels.append('%s.entryPoints=%s' % (router_config_prefix, entrypoint))
-
-        # rule
-        rule = []
-        if 'host' in config:
-            rule.append('Host(`%s`)' % (config['host']))
-        if 'path' in config:
-            rule.append('(Path(`%s`) || PathPrefix(`%s/`))' % (config['path'], config['path']))
-        labels.append('%s.rule=%s' % (router_config_prefix, ' && '.join(rule)))
-
-        # tls
-        if tls:
-            labels.append('%s.tls' % (router_config_prefix))
-
-        # middlewares
-        middlewares = []
-        if not tls and ('https-redirect' not in config or config['https-redirect']):
-            middlewares.append('302https@file')
-        if 'admin' in config and config['admin']:
-            middlewares.append('auth@file')
-        if tls and 'location' in config and config['location']:
-            labels.append('traefik.http.middlewares.%s.redirectregex.regex=.*' % (name))
-            labels.append('traefik.http.middlewares.%s.redirectregex.replacement=%s' % (name, config['location']))
-            middlewares.append(name)
-        if middlewares:
-            labels.append('%s.middlewares=%s' % (router_config_prefix, ','.join(middlewares)))
-
-    if 'host' in route or 'path' in route:
-        if 'port' in route:
-            labels.append('traefik.http.services.%s.loadbalancer.server.port=%s' % (service_name, route['port']))
-
-        if 'admin' in route and route['admin']:
-            create_router(service_name, 'traefik', route, True)
-        else:
-            create_router(service_name, 'http', route)
-            create_router(service_name, 'https', route, True)
-
-    if 'redirect' in route:
-        for key in route['redirect']:
-            create_router(key, 'http', route['redirect'][key])
-            create_router(key, 'https', route['redirect'][key], True)
-
-    if labels:
-        labels.insert(0, 'traefik.enable=true')
-
-    return labels
-
-
-def convert_services_yaml(y):
-    y_new = {
-        'services': {}
-    }
-    services = y.get('services', {})
-    if services:
-        for s in services:
-            if 'x-web-conductor' in services[s]:
-                conductor = services[s]['x-web-conductor'] or {}
-                data = {
-                    'restart': 'always',
-                    'labels': []
-                }
-                y_new['services'][s] = data
-                if 'repo-host' in conductor and 'repo-name' in conductor:
-                    data['build'] = {
-                        'context': os.path.join(dir_root, 'workspace', 'services', conductor['repo-name'])
-                    }
-                    dockerfile = os.path.join(dir_root, 'dockerfiles', s + '.dockerfile')
-                    if os.path.isfile(dockerfile):
-                        data['build']['dockerfile'] = dockerfile
-                data['labels'].extend(traefik_labels_from_route(s, conductor))
-    return y_new
-
-
-def create_composer_files(recreate=False):
-    f_final = os.path.join(dir_root, 'compose.yml')
-
-    if os.path.isfile(f_final) and not recreate:
-        return
-    print("recreating configuration files...", file=sys.stderr)
-    # TODO: output changed files only so that ansible shows changes correctly
-
-    all_groups = []
-    for (f, fpaths) in find_compose_files().items():
-        f_name, f_ext = os.path.splitext(f)
-        f_group = []
-        for fpath in fpaths:
-            y = load_yaml(fpath)
-            if not y:
-                continue
-            f_x_path = os.path.join(os.path.dirname(fpath), f_name + '.override' + f_ext)
-            y_new = convert_services_yaml(y)
-            f_group.extend((fpath, f_x_path))
-            with io.open(f_x_path, 'w+') as fp:
-                yaml.safe_dump(y_new, fp, default_flow_style=False)
-        all_groups.append(f_group)
-
-    with io.open(f_final, 'w+') as fp:
-        dat = {
-            'name': 'wc',
-            'include': [{'path': g} for g in all_groups]
-        }
-        yaml.safe_dump(dat, fp, default_flow_style=False)
-    return
-
-
-def call_process(*args, **kwargs):
-    def void_handler(*_): pass
-    prev_term = signal.getsignal(signal.SIGTERM)
-    prev_int = signal.getsignal(signal.SIGINT)
-    signal.signal(signal.SIGTERM, void_handler)
-    signal.signal(signal.SIGINT, void_handler)
-    try:
-        return subprocess.call(*args, **kwargs)
-    finally:
-        signal.signal(signal.SIGTERM, prev_term)
-        signal.signal(signal.SIGINT, prev_int)
-
-
-def call_composer(args, args_pre=[]):
-    create_composer_files()
-    return call_process(args_pre + ['docker', 'compose'] + args)
-
-
-def volume_inspect(name, use_sudo=False):
-    args = ['sudo'] if use_sudo else []
-    args.extend(['docker', 'volume', 'inspect', name])
-    print('inspecting volume \'%s\'...' % (name))
-    return call_process(args, stdout=subprocess.DEVNULL) == 0
-
-
-def volume_backup(name, use_sudo=False):
-    if not volume_inspect(name, use_sudo):
-        return False
-
-    dir_backup = os.path.join(dir_root, 'backups', 'volumes')
-    os.makedirs(dir_backup, exist_ok=True)
-
-    fd, tmp_file = tempfile.mkstemp(suffix='.tar.gz', dir=dir_backup)
-    os.close(fd)
-
-    print('creating backup...')
-    args = ['sudo'] if use_sudo else []
-    args.extend([
-        'docker', 'run', '--init', '--rm',
-        '-v', '%s:/tmp/volume:ro' % (name),
-        '-v', '%s:/tmp/file' % (tmp_file),
-        'busybox', 'tar', '-f', '/tmp/file', '-czC', '/tmp', 'volume'
-    ])
-    ret = call_process(args)
-
-    if ret != 0:
-        print("docker exited with non-zero status code (%s), aborting..." % (ret))
-        os.unlink(tmp_file)
-        return False
-
-    final_name = '%s_%s.tar.gz' % (name, str(int(time.time())))
-    print('saved to \'%s\'' % (final_name))
-    os.rename(tmp_file, os.path.join(dir_backup, final_name))
-    return True
-
-
-def bash_dump():
-    data = {}
-    for fpath in (f for g in find_compose_files().values() for f in g):
-        y = load_yaml(fpath)
-        services = y.get('services', {})
-        if services:
-            for s in services:
-                if 'x-web-conductor' in services[s]:
-                    if s in data:
-                        print('[web-conductor] duplicate \'x-web-conductor\' configuration for service \'%s\'' %
-                              (s), file=sys.stderr)
-                        return False
-                    data[s] = services[s]['x-web-conductor'] or {}
-
-    data_services = []
-    data_repo_hosts = []
-    data_repo_names = []
-    data_build_cmds = []
-    for s in data:
-        data_services.append(s)
-        data_repo_hosts.append(str(data[s]['repo-host']) if 'repo-host' in data[s] else "")
-        data_repo_names.append(str(data[s]['repo-name']) if 'repo-name' in data[s] else "")
-        data_build_cmds.append(str(data[s]['build']) if 'build' in data[s] else "")
-    data_services = map(shlex.quote, data_services)
-    data_services = map(shlex.quote, data_services)
-    data_repo_hosts = map(shlex.quote, data_repo_hosts)
-    data_repo_names = map(shlex.quote, data_repo_names)
-    data_build_cmds = map(shlex.quote, data_build_cmds)
-    print('WC_SERVICES=(%s)' % (' '.join(data_services)))
-    print('WC_REPO_HOSTS=(%s)' % (' '.join(data_repo_hosts)))
-    print('WC_REPO_NAMES=(%s)' % (' '.join(data_repo_names)))
-    print('WC_BUILD_CMDS=(%s)' % (' '.join(data_build_cmds)))
-    return True
 
 
 if __name__ == "__main__":
@@ -275,7 +45,7 @@ if __name__ == "__main__":
 
     subparsers.add_parser('bash', description='dump service data for bash processing')
 
-    aliased_composer_cmds = {
+    aliased_compose_cmds = {
         'up': ['up', '-d', '--remove-orphans'],
         'up-build': ['up', '--build', '-d', '--remove-orphans'],
         'up-recreate': ['up', '-d', '--remove-orphans', '--force-recreate'],
@@ -284,28 +54,30 @@ if __name__ == "__main__":
         'traefik-reload-dynamic': ['exec', 'traefik', 'touch', '/etc/traefik/dynamic'],
     }
 
-    for cmd in aliased_composer_cmds:
-        p = subparsers.add_parser(cmd, description='alias for \'compose %s\'' % (' '.join(aliased_composer_cmds[cmd])))
+    for cmd in aliased_compose_cmds:
+        p = subparsers.add_parser(cmd, description='alias for \'compose %s\'' % (' '.join(aliased_compose_cmds[cmd])))
         p.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
 
     args = parser.parse_args()
 
     if args.command == 'config':
-        create_composer_files(True)
+        compose_files_create([dir_root, dir_user], True)
 
     if args.command == 'compose':
-        call_composer(args.args, ['sudo'] if args.sudo else [])
+        compose_files_create([dir_root, dir_user])
+        call_compose(args.args, ['sudo'] if args.sudo else [])
 
     if args.command == 'volume':
         if args.command_volume == 'backup':
-            if not volume_backup(args.name, args.sudo):
+            if not volume_backup(dir_root, args.name, args.sudo):
                 exit(1)
 
     if args.command == 'bash':
-        if not bash_dump():
+        compose_files = compose_files_find([dir_root, dir_user])
+        if not bash_dump(compose_files):
             exit(1)
 
-    if args.command in aliased_composer_cmds:
-        cmd_args = list(aliased_composer_cmds[args.command])
+    if args.command in aliased_compose_cmds:
+        cmd_args = list(aliased_compose_cmds[args.command])
         cmd_args.extend(args.args)
-        call_composer(cmd_args, ['sudo'] if args.sudo else [])
+        call_compose(cmd_args, ['sudo'] if args.sudo else [])

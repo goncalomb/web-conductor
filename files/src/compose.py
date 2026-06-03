@@ -77,9 +77,6 @@ def convert_services_yaml(y, base_dir):
                     data['build'] = {
                         'context': os.path.join(base_dir, 'workspace', 'services', conductor['repo-name'])
                     }
-                    dockerfile = os.path.join(base_dir, 'dockerfiles', s + '.dockerfile')
-                    if os.path.isfile(dockerfile):
-                        data['build']['dockerfile'] = dockerfile
                 data['labels'].extend(traefik_labels_from_route(s, conductor))
     return y_new
 

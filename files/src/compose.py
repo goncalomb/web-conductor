@@ -1,8 +1,7 @@
 import os
 import re
-import sys
 
-from .utils import yaml_dump, yaml_load
+from .utils import yaml_dump_print_changes, yaml_load
 
 
 def traefik_labels_from_route(service_name, route):
@@ -87,7 +86,6 @@ def convert_services_yaml(y, base_dir):
 
 def compose_files_find(dirs):
     # files are grouped by name so that user files can extend root files
-    # e.g. extend compose.base.yml
     re_compose = r'^compose\.\w+\.ya?ml$'
     files = {}
     for d in dirs:
@@ -102,14 +100,8 @@ def compose_files_find(dirs):
     return files
 
 
-def compose_files_create(dirs, recreate=False):
-    f_final = os.path.join(dirs[0], 'compose.yml')
-
-    if os.path.isfile(f_final) and not recreate:
-        return
-    print("recreating configuration files...", file=sys.stderr)
-    # TODO: output changed files only so that ansible shows changes correctly
-
+def compose_files_create(dirs):
+    # create override files
     all_groups = []
     for f, f_paths in compose_files_find(dirs).items():
         f_name, f_ext = os.path.splitext(f)
@@ -121,11 +113,11 @@ def compose_files_create(dirs, recreate=False):
             f_x_path = os.path.join(os.path.dirname(fpath), f_name + '.override' + f_ext)
             y_new = convert_services_yaml(y, dirs[0])
             f_group.extend((fpath, f_x_path))
-            yaml_dump(f_x_path, y_new)
+            yaml_dump_print_changes(f_x_path, y_new)
         all_groups.append(f_group)
 
-    dat = {
+    # create final compose.yml file
+    yaml_dump_print_changes(os.path.join(dirs[0], 'compose.yml'), {
         'name': 'wc',
         'include': [{'path': g} for g in all_groups]
-    }
-    yaml_dump(f_final, dat)
+    })

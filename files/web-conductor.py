@@ -61,10 +61,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == 'config':
-        compose_files_create([dir_root, dir_user], True)
+        compose_files_create([dir_root, dir_user])
 
     if args.command == 'compose':
-        compose_files_create([dir_root, dir_user])
         call_compose(args.args, ['sudo'] if args.sudo else [])
 
     if args.command == 'volume':

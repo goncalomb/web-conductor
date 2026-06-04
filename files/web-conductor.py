@@ -12,28 +12,14 @@ import os
 
 from src.bash import bash_dump
 from src.compose import compose_files_create, compose_files_find
-from src.utils import call_compose, print_err, yaml_load
+from src.config import Config
+from src.utils import call_compose
 from src.volume import volume_backup
 
 # TODO: consider using relative paths for compose files
-dir_root = os.path.realpath(os.path.dirname(__file__))
-dir_user = os.path.join(dir_root, 'user')
+root_dir = os.path.realpath(os.path.dirname(__file__))
 
-os.chdir(dir_root)
-
-
-def config_load():
-    file = os.path.join(dir_root, 'config.yml')
-    if os.path.isfile(file):
-        return yaml_load(file)
-    # fallback to ansible defaults for local testing
-    if os.path.basename(dir_root) == 'files':
-        file = os.path.join(os.path.dirname(dir_root), 'defaults', 'main.yml')
-        if os.path.isfile(file):
-            print_err("WARNING: using ansible defaults as 'config.yml', local testing?")
-            return yaml_load(file)
-    raise RuntimeError("'config.yml' not found")
-
+os.chdir(root_dir)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='web-conductor')
@@ -72,21 +58,21 @@ if __name__ == "__main__":
         p.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
 
     args = parser.parse_args()
-    config = config_load()
+    cfg = Config.load(root_dir)
 
     if args.command == 'config':
-        compose_files_create([dir_root, dir_user], config['wc_name'])
+        compose_files_create(cfg)
 
     if args.command == 'compose':
         call_compose(args.args, ['sudo'] if args.sudo else [])
 
     if args.command == 'volume':
         if args.command_volume == 'backup':
-            if not volume_backup(dir_root, args.name, args.sudo):
+            if not volume_backup(cfg.root_dir, args.name, args.sudo):
                 exit(1)
 
     if args.command == 'bash':
-        compose_files = compose_files_find([dir_root, dir_user])
+        compose_files = compose_files_find(cfg)
         if not bash_dump(compose_files):
             exit(1)
 

@@ -22,6 +22,14 @@
     dest: "{{ wc_dir }}/user/"
   when: stat_user.stat.isdir | default(false)
 
+- name: Create config.yml
+  ansible.builtin.copy:
+    dest: "{{ wc_dir }}/config.yml"
+    content: "{{ dict(wc_config_keys | zip(q('ansible.builtin.vars', *wc_config_keys))) | to_nice_yaml }}"
+  vars:
+    wc_config_keys:
+      - wc_name
+
 - name: Create secrets directory
   ansible.builtin.file:
     path: "{{ wc_dir }}/secrets"

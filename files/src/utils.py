@@ -1,8 +1,13 @@
 import os
 import signal
 import subprocess
+import sys
 
 import yaml
+
+
+def print_err(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def yaml_load(file):

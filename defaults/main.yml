@@ -1,6 +1,7 @@
 # installation directory on the target host
 wc_dir: "{{ ansible_facts.user_dir }}/web-conductor"
-
+# docker compose project name
+wc_name: wd
 # directory for user files
 wc_user_dir: "{{ playbook_dir }}/user"
 

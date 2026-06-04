@@ -97,7 +97,7 @@ def compose_files_find(dirs):
     return files
 
 
-def compose_files_create(dirs):
+def compose_files_create(dirs, name):
     # create override files
     all_groups = []
     for f, f_paths in compose_files_find(dirs).items():
@@ -115,6 +115,6 @@ def compose_files_create(dirs):
 
     # create final compose.yml file
     yaml_dump_print_changes(os.path.join(dirs[0], 'compose.yml'), {
-        'name': 'wc',
+        'name': name,
         'include': [{'path': g} for g in all_groups]
     })

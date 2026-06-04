@@ -12,7 +12,7 @@ import os
 
 from src.bash import bash_dump
 from src.compose import compose_files_create, compose_files_find
-from src.utils import call_compose
+from src.utils import call_compose, print_err, yaml_load
 from src.volume import volume_backup
 
 # TODO: consider using relative paths for compose files
@@ -20,6 +20,19 @@ dir_root = os.path.realpath(os.path.dirname(__file__))
 dir_user = os.path.join(dir_root, 'user')
 
 os.chdir(dir_root)
+
+
+def config_load():
+    file = os.path.join(dir_root, 'config.yml')
+    if os.path.isfile(file):
+        return yaml_load(file)
+    # fallback to ansible defaults for local testing
+    if os.path.basename(dir_root) == 'files':
+        file = os.path.join(os.path.dirname(dir_root), 'defaults', 'main.yml')
+        if os.path.isfile(file):
+            print_err("WARNING: using ansible defaults as 'config.yml', local testing?")
+            return yaml_load(file)
+    raise RuntimeError("'config.yml' not found")
 
 
 if __name__ == "__main__":
@@ -59,9 +72,10 @@ if __name__ == "__main__":
         p.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
 
     args = parser.parse_args()
+    config = config_load()
 
     if args.command == 'config':
-        compose_files_create([dir_root, dir_user])
+        compose_files_create([dir_root, dir_user], config['wc_name'])
 
     if args.command == 'compose':
         call_compose(args.args, ['sudo'] if args.sudo else [])

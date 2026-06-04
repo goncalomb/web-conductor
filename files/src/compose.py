@@ -73,9 +73,9 @@ def convert_services_yaml(y, base_dir):
                     'labels': []
                 }
                 y_new['services'][s] = data
-                if 'repo-host' in conductor and 'repo-name' in conductor:
+                if 'repo' in conductor:
                     data['build'] = {
-                        'context': os.path.join(base_dir, 'workspace', 'services', conductor['repo-name'])
+                        'context': os.path.join(base_dir, 'workspace', 'services', s, 'repo'),
                     }
                 data['labels'].extend(traefik_labels_from_route(s, conductor))
     return y_new

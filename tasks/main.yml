@@ -8,6 +8,9 @@
   ansible.posix.synchronize:
     src: files/
     dest: "{{ wc_dir }}/"
+    rsync_opts:
+      # new files on other tasks will cause idempotency issues (changed mtime)
+      - --omit-dir-times
 
 - name: Check user directory
   ansible.builtin.stat:
@@ -52,10 +55,15 @@
   register: shell_result
   changed_when: shell_result.stdout | length > 0
 
-- name: Start services
+- name: Fetch service files
   ansible.builtin.command:
     chdir: "{{ wc_dir }}"
     argv: ['./fetch.sh']
   register: shell_result
   changed_when: shell_result.stdout | length > 0
-  when: wc_start
+
+- name: "Run docker compose (state: {{ wc_state }})"
+  community.docker.docker_compose_v2:
+    project_src: "{{ wc_dir }}"
+    remove_orphans: true
+    state: "{{ wc_state }}"

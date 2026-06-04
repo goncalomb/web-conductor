@@ -1,14 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
-shopt -s nullglob
-
-# XXX: this logic should eventually be moved to web-conductor.py
-
+set -euo pipefail
 cd -- "$(dirname -- "$0")"
-DIR=$(pwd)
+
+# XXX: this logic should eventually be moved to web-conductor.py, maybe?
+
+eval "$(./web-conductor.py bash)"
 
 mkdir -p workspace/services
+cd workspace/services
 
 update-repo() {
     if [ -d "$2" ]; then
@@ -27,10 +27,10 @@ update-repo() {
         fi
     elif [ -n "$GIT_MTIME" ]; then
         echo "Cloning repo '$2' (full)..."
-        git clone "$1/$2.git"
+        git clone "$1" "$2"
     else
         echo "Cloning repo '$2' (depth=1)..."
-        git clone --depth=1 "$1/$2.git"
+        git clone --depth=1 "$1" "$2"
     fi
 
     if [ -n "$GIT_MTIME" ]; then (
@@ -55,32 +55,23 @@ update-repo() {
 }
 
 service-update-repo() {(
-    GIT_MTIME=1
-    REPO_HOST=${WC_REPO_HOSTS[$1]}
-    REPO_NAME=${WC_REPO_NAMES[$1]}
-    BUILD_CMD=${WC_BUILD_CMDS[$1]}
-    cd "$DIR/workspace/services"
-    if [ -n "$REPO_HOST" ]; then
-        update-repo "$REPO_HOST" "$REPO_NAME" "$BUILD_CMD"
+    URL=${WC_REPO_URL[$1]}
+    NAME=${WC_SERVICE_NAME[$1]}
+    BUILD_CMD=${WC_REPO_BUILD[$1]}
+    GIT_MTIME=${WC_REPO_MTIME[$1]}
+    if [ -n "$URL" ]; then
+        update-repo "$URL" "$NAME/repo" "$BUILD_CMD"
     fi
 )}
 
-DATA=$(./web-conductor.py bash)
-eval $DATA
+declare -A S_EN
+for NAME in "$@"; do
+    S_EN["$NAME"]=1
+done
 
-if [ -z "$*" ]; then
-    for I in "${!WC_SERVICES[@]}"; do
+for I in "${!WC_SERVICE_NAME[@]}"; do
+    NAME=${WC_SERVICE_NAME[$I]}
+    if [ $# -eq 0 ] || [ -n "${S_EN[$NAME]:-}" ]; then
         service-update-repo "$I"
-    done
-else
-    for NAME in "$@"; do
-        for I in "${!WC_SERVICES[@]}"; do
-            if [[ "$NAME" == "${WC_SERVICES[$I]}" ]]; then
-                service-update-repo "$I"
-                break
-            fi
-        done
-    done
-fi
-
-./web-conductor.py up-build "$@"
+    fi
+done

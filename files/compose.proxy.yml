@@ -6,7 +6,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "81:81"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/letsencrypt/live/:/etc/letsencrypt/live/:ro
@@ -14,6 +13,10 @@ services:
       - ./log/traefik/:/var/log/traefik/
     secrets:
       - traefik_htpasswd
+    x-web-conductor:
+      route: # hardcoded to api@internal
+        path: /
+        admin: true
 
   limbo:
     build: ./services/limbo

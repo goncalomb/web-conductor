@@ -32,6 +32,7 @@
   vars:
     wc_config_keys:
       - wc_name
+      - wc_admin_host
 
 - name: Create secrets directory
   ansible.builtin.file:

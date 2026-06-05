@@ -6,7 +6,9 @@ wc_name: wc
 wc_state: present
 # directory for user files
 wc_user_dir: "{{ playbook_dir }}/user"
-# authentication for the dashboard on port 81
+# default host for admin routes (e.g. dashboard, metrics, etc.)
+wc_admin_host: "{{ wc_name }}.localhost"
+# authentication for admin routes
 # create a new password hash with: htpasswd -nB admin
 # or: docker run --rm -it alpine:latest sh -c "apk add apache2-utils && htpasswd -nB admin"
 wc_auth_users:

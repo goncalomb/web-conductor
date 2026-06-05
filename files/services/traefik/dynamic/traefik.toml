@@ -1,9 +1,3 @@
-[http.routers.traefik]
-    rule="PathPrefix(`/`)"
-    service="api@internal"
-    entryPoints=["traefik"]
-    middlewares=["auth"]
-
 [http.routers.metrics]
     rule="PathPrefix(`/metrics`)"
     service="prometheus@internal"

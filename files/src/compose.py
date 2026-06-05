@@ -23,10 +23,16 @@ class ComposeFile():
             if entrypoint != 'https':
                 tr.set('entryPoints', entrypoint)
 
+            # hardcoded service for traefik dashboard
+            if service_name == 'traefik' and 'admin' in config and config['admin']:
+                tr.set('service', 'api@internal')
+
             # rule
             rule = []
             if 'host' in config:
                 rule.append('Host(`%s`)' % (config['host']))
+            elif 'admin' in config and config['admin']:
+                rule.append('Host(`%s`)' % (self._cfg.wc['admin_host']))
             if 'path' in config:
                 if config['path'] == '/':
                     rule.append('PathPrefix(`/`)')
@@ -54,10 +60,12 @@ class ComposeFile():
                 ts = tcg.add(TraefikService(base_name))
                 ts.set('loadbalancer.server.port', route['port'])
 
-            if 'admin' in route and route['admin']:
-                create_router([base_name], route, entrypoint='traefik')
-            else:
-                create_router([base_name], route)
+            # XXX: no longer using another entrypoint for admin routes
+            # if 'admin' in route and route['admin']:
+            #     create_router([base_name], route, entrypoint='traefik')
+            # else:
+            #     create_router([base_name], route)
+            create_router([base_name], route)
 
         if 'routes' in config:
             for key in config['routes']:

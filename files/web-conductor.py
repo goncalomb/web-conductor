@@ -72,8 +72,7 @@ if __name__ == "__main__":
                 exit(1)
 
     if args.command == 'bash':
-        compose_files = compose_files_find(cfg)
-        if not bash_dump(compose_files):
+        if not bash_dump(compose_files_find(cfg, user_only=True)):
             exit(1)
 
     if args.command in aliased_compose_cmds:

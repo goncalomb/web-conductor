@@ -1,33 +1,45 @@
 [api]
 
-[metrics]
-    [metrics.prometheus]
-        manualRouting = true
+[metrics.prometheus]
+manualRouting = true
 
-[entryPoints]
-    [entryPoints.http]
-        address = ":80"
-    [entryPoints.https]
-        address = ":443"
-    [entryPoints.traefik]
-        address = ":81"
-    [entryPoints.metrics]
-        address = ":82"
+[entryPoints.http]
+address = ":80"
+
+[entryPoints.http.http.redirections.entryPoint]
+to = "https"
+scheme = "https"
+permanent = false
+priority = 1
+
+[entryPoints.https]
+address = ":443"
+asDefault = true
+
+[entryPoints.https.http.tls]
+
+[entryPoints.traefik]
+address = ":81"
+
+[entryPoints.traefik.http.tls]
+
+[entryPoints.metrics]
+address = ":82"
 
 [log]
-    filePath = "/var/log/traefik/traefik.log"
-    format = "json"
-    level = "INFO"
+filePath = "/var/log/traefik/traefik.log"
+format = "json"
+level = "INFO"
 
 [accessLog]
-    filePath = "/var/log/traefik/access.log"
-    format = "json"
-    [accessLog.fields.headers.names]
-        "User-Agent" = "keep"
-        "Referer" = "keep"
+filePath = "/var/log/traefik/access.log"
+format = "json"
+[accessLog.fields.headers.names]
+"User-Agent" = "keep"
+"Referer" = "keep"
 
 [providers.docker]
-    exposedbydefault = false
+exposedbydefault = false
 
 [providers.file]
-    directory = "/etc/traefik/dynamic"
+directory = "/etc/traefik/dynamic"

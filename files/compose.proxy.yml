@@ -18,15 +18,12 @@ services:
   limbo:
     build: ./services/limbo
     restart: always
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.limbo-http.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.limbo-http.priority=1"
-      - "traefik.http.routers.limbo-https.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.limbo-https.priority=1"
-      - "traefik.http.routers.limbo-https.tls"
     environment:
       - "LIMBO_DEBUG="
+    x-web-conductor:
+      route:
+        path: /
+        priority: 1
 
 secrets:
   traefik_htpasswd:

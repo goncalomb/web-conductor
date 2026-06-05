@@ -1,6 +1,7 @@
 import os
 import re
 
+from .traefik import TraefikConfigGroup, TraefikMiddleware, TraefikRouter, TraefikService
 from .utils import yaml_dump_print_changes, yaml_load
 
 
@@ -10,58 +11,61 @@ class ComposeFile():
         self.path = path
         self._cfg = cfg
 
-    def _traefik_labels_from_route(self, service_name, route):
-        labels = []
+    def _create_traefik_labels(self, service_name, config):
+        base_name = service_name.replace('.', '-') + '-' + self._cfg.wc['name']
+        tcg = TraefikConfigGroup()
 
-        def create_router(name, entrypoint, config, tls=False):
-            router_config_prefix = 'traefik.http.routers.%s-%s' % (name, entrypoint)
+        def create_router(name_parts, config, *, entrypoint='https'):
+            name = '|'.join(name_parts)
+            tr = tcg.add(TraefikRouter(name))
 
-            # entry point
-            labels.append('%s.entryPoints=%s' % (router_config_prefix, entrypoint))
+            # entry point (https is set as default on traefik.toml)
+            if entrypoint != 'https':
+                tr.set('entryPoints', entrypoint)
 
             # rule
             rule = []
             if 'host' in config:
                 rule.append('Host(`%s`)' % (config['host']))
             if 'path' in config:
-                rule.append('(Path(`%s`) || PathPrefix(`%s/`))' % (config['path'], config['path']))
-            labels.append('%s.rule=%s' % (router_config_prefix, ' && '.join(rule)))
+                if config['path'] == '/':
+                    rule.append('PathPrefix(`/`)')
+                else:
+                    rule.append('(Path(`%s`) || PathPrefix(`%s/`))' % (config['path'], config['path']))
+            if rule:
+                tr.set('rule', ' && '.join(rule))
 
-            # tls
-            if tls:
-                labels.append('%s.tls' % (router_config_prefix))
+            # priority
+            if 'priority' in config:
+                tr.set('priority', config['priority'])
 
             # middlewares
-            middlewares = []
-            if not tls and ('https-redirect' not in config or config['https-redirect']):
-                middlewares.append('302https@file')
             if 'admin' in config and config['admin']:
-                middlewares.append('auth@file')
-            if tls and 'location' in config and config['location']:
-                labels.append('traefik.http.middlewares.%s.redirectregex.regex=.*' % (name))
-                labels.append('traefik.http.middlewares.%s.redirectregex.replacement=%s' % (name, config['location']))
-                middlewares.append(name)
-            if middlewares:
-                labels.append('%s.middlewares=%s' % (router_config_prefix, ','.join(middlewares)))
+                tr.set('middlewares', 'auth@file', append=True)
+            if 'location' in config and config['location']:
+                tm = tcg.add(TraefikMiddleware(name + '~location'))
+                tm.set('redirectregex.regex', '^.+$')
+                tm.set('redirectregex.replacement', config['location'])
+                tr.set('middlewares', tm.name, append=True)
 
-        if 'host' in route or 'path' in route:
+        if 'route' in config:
+            route = config['route']
             if 'port' in route:
-                labels.append('traefik.http.services.%s.loadbalancer.server.port=%s' % (service_name, route['port']))
+                ts = tcg.add(TraefikService(base_name))
+                ts.set('loadbalancer.server.port', route['port'])
 
             if 'admin' in route and route['admin']:
-                create_router(service_name, 'traefik', route, True)
+                create_router([base_name], route, entrypoint='traefik')
             else:
-                create_router(service_name, 'http', route)
-                create_router(service_name, 'https', route, True)
+                create_router([base_name], route)
 
-        if 'redirect' in route:
-            for key in route['redirect']:
-                create_router(key, 'http', route['redirect'][key])
-                create_router(key, 'https', route['redirect'][key], True)
+        if 'routes' in config:
+            for key in config['routes']:
+                create_router([base_name, key], config['routes'][key])
 
+        labels = list(tcg.to_labels())
         if labels:
             labels.insert(0, 'traefik.enable=true')
-
         return labels
 
     def _create_override(self, y):
@@ -82,7 +86,7 @@ class ComposeFile():
                         data['build'] = {
                             'context': self._cfg.get_repo_dir(s),
                         }
-                    data['labels'].extend(self._traefik_labels_from_route(s, conductor))
+                    data['labels'].extend(self._create_traefik_labels(s, conductor))
         return y_new
 
     def create_override_file(self):
@@ -108,11 +112,11 @@ class ComposeFileGroup():
                 yield f.path, f_override
 
 
-def compose_files_find(cfg):
+def compose_files_find(cfg, *, user_only=False):
     # files are grouped by name so that user files can extend root files
     re_compose = r'^compose\.\w+\.ya?ml$'
     files = {}
-    for d in [cfg.root_dir, cfg.user_dir]:
+    for d in [cfg.root_dir, cfg.user_dir] if not user_only else [cfg.user_dir]:
         if not os.path.isdir(d):
             continue
         for f in os.listdir(d):

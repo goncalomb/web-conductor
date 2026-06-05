@@ -3,7 +3,6 @@
     service="api@internal"
     entryPoints=["traefik"]
     middlewares=["auth"]
-    [http.routers.traefik.tls]
 
 [http.routers.metrics]
     rule="PathPrefix(`/metrics`)"
@@ -12,7 +11,3 @@
 
 [http.middlewares.auth.basicAuth]
     usersFile = "/run/secrets/traefik_htpasswd"
-
-[http.middlewares.302https.redirectScheme]
-    scheme = "https"
-    permanent = false

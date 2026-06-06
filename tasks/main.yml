@@ -52,14 +52,14 @@
 - name: Create configuration files
   ansible.builtin.command:
     chdir: "{{ wc_dir }}"
-    argv: ['./web-conductor.py', 'config']
+    argv: ['./web-conductor.py', 'run', 'config']
   register: shell_result
   changed_when: shell_result.stdout | length > 0
 
-- name: Fetch service files
+- name: Update workspace files
   ansible.builtin.command:
     chdir: "{{ wc_dir }}"
-    argv: ['./fetch.sh']
+    argv: ['./web-conductor.py', 'run', 'update']
   register: shell_result
   changed_when: shell_result.stdout | length > 0
 

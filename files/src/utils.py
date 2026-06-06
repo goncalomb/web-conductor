@@ -6,6 +6,16 @@ import sys
 import yaml
 
 
+class FatalError(RuntimeError):
+    def __init__(self, *args, exit_code=1):
+        super().__init__(*args)
+        self.exit_code = exit_code
+
+    def exit(self):
+        print_err(self)
+        exit(self.exit_code)
+
+
 def print_err(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 

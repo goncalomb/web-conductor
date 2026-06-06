@@ -10,32 +10,35 @@
 import argparse
 import os
 
-from src.bash import bash_dump
 from src.compose import compose_files_create, compose_files_find
 from src.config import Config
-from src.utils import call_compose
+from src.utils import FatalError, call_compose, print_err
 from src.volume import volume_backup
+from src.workspace import workspace_update
 
 # TODO: consider using relative paths for compose files
 root_dir = os.path.realpath(os.path.dirname(__file__))
 
 os.chdir(root_dir)
 
-if __name__ == "__main__":
+
+def main():
     parser = argparse.ArgumentParser(prog='web-conductor')
     parser.add_argument('--sudo', action='store_true', help='use sudo for calling docker-compose')
 
-    subparsers = parser.add_subparsers(title='commands', dest='command')
-    subparsers.required = True
+    subparsers = parser.add_subparsers(title='commands', dest='command', required=True)
 
-    parser_config = subparsers.add_parser('config', description='write final compose file')
+    parser_run = subparsers.add_parser('run', description='run internal commands')
+    parser_run_sub = parser_run.add_subparsers(title='commands', dest='command_run', required=True)
+
+    parser_run_sub.add_parser('config', description='write final compose file')
+    parser_run_sub.add_parser('update', description='update workspace repositories')
 
     parser_compose = subparsers.add_parser('compose', description='call docker-compose')
     parser_compose.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
 
     parser_volume = subparsers.add_parser('volume', description='volume operations')
-    parser_volume_sub = parser_volume.add_subparsers(title='commands', dest='command_volume')
-    parser_volume_sub.required = True
+    parser_volume_sub = parser_volume.add_subparsers(title='commands', dest='command_volume', required=True)
 
     parser_volume_backup = parser_volume_sub.add_parser('backup', description='volume backup')
     parser_volume_backup.add_argument('name', help='volume name')
@@ -60,8 +63,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     cfg = Config.load(root_dir)
 
-    if args.command == 'config':
-        compose_files_create(cfg)
+    if args.command == 'run':
+        if args.command_run == 'config':
+            compose_files_create(cfg)
+        if args.command_run == 'update':
+            workspace_update(cfg)
 
     if args.command == 'compose':
         call_compose(args.args, ['sudo'] if args.sudo else [])
@@ -71,11 +77,14 @@ if __name__ == "__main__":
             if not volume_backup(cfg.root_dir, args.name, args.sudo):
                 exit(1)
 
-    if args.command == 'bash':
-        if not bash_dump(compose_files_find(cfg, user_only=True)):
-            exit(1)
-
     if args.command in aliased_compose_cmds:
         cmd_args = list(aliased_compose_cmds[args.command])
         cmd_args.extend(args.args)
         call_compose(cmd_args, ['sudo'] if args.sudo else [])
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except FatalError as e:
+        e.exit()

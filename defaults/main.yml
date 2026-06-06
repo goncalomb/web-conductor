@@ -13,3 +13,9 @@ wc_admin_host: "{{ wc_name }}.localhost"
 # or: docker run --rm -it alpine:latest sh -c "apk add apache2-utils && htpasswd -nB admin"
 wc_auth_users:
   - admin:$2y$05$/2fEzWkXRrlWT.dOLn.jXOadzvVLz3dR9VBkMaVk9wuvJx9wVH2Xe # admin:admin
+# grafana dashboards to download
+wc_grafana_dashboard_ids:
+  - 1860-31 # https://grafana.com/grafana/dashboards/1860-node-exporter-full/
+  - 17346-7 # https://grafana.com/grafana/dashboards/17346-traefik-official-standalone-dashboard/
+  - 4475-5 # https://grafana.com/grafana/dashboards/4475-traefik/
+  - 11462-1 # https://grafana.com/grafana/dashboards/11462-traefik-2/

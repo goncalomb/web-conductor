@@ -68,3 +68,11 @@
     project_src: "{{ wc_dir }}"
     remove_orphans: true
     state: "{{ wc_state }}"
+
+- name: Download grafana dashboards
+  ansible.builtin.command:
+    chdir: "{{ wc_dir }}"
+    argv: "{{ ['./scripts/grafana-dash-down.sh'] + wc_grafana_dashboard_ids }}"
+  register: shell_result
+  changed_when: shell_result.stdout | length > 0
+  when: wc_grafana_dashboard_ids | length > 0 and wc_state != 'absent' and wc_state != 'stopped'

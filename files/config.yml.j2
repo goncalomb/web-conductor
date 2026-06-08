@@ -1,0 +1,5 @@
+{% set wc_config_keys = [
+    'wc_name',
+    'wc_admin_host',
+] %}
+{{ dict(wc_config_keys | zip(q('ansible.builtin.vars', *wc_config_keys))) | to_nice_yaml }}

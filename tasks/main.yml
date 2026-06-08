@@ -4,50 +4,19 @@
     cache_valid_time: 3600
   become: true
 
-- name: Copy files
-  ansible.posix.synchronize:
-    src: files/
-    dest: "{{ wc_dir }}/"
-    rsync_opts:
-      # new files on other tasks will cause idempotency issues (changed mtime)
-      - --omit-dir-times
-
-- name: Check user directory
-  ansible.builtin.stat:
-    path: "{{ wc_user_dir }}/"
-  register: stat_user
-  delegate_to: localhost
-  when: wc_user_dir | length > 0
-
-- name: Copy user directory
-  ansible.posix.synchronize:
-    src: "{{ wc_user_dir }}/"
-    dest: "{{ wc_dir }}/user/"
-  when: stat_user.stat.isdir | default(false)
-
-- name: Create config.yml
-  ansible.builtin.copy:
-    dest: "{{ wc_dir }}/config.yml"
-    content: "{{ dict(wc_config_keys | zip(q('ansible.builtin.vars', *wc_config_keys))) | to_nice_yaml }}"
-  vars:
-    wc_config_keys:
-      - wc_name
-      - wc_admin_host
-
-- name: Create secrets directory
-  ansible.builtin.file:
-    path: "{{ wc_dir }}/secrets"
-    state: directory
-    mode: '0700'
-
-- name: Create htpasswd secret
-  ansible.builtin.copy:
-    dest: "{{ wc_dir }}/secrets/traefik_htpasswd"
-    mode: '0600'
-    content: |
-      {% for user in wc_auth_users %}
-      {{ user }}
-      {% endfor %}
+- name: Include sync tasks
+  ansible.builtin.include_tasks:
+    file: include/sync.yml
+  loop:
+    - name: core
+      src: "{{ role_path }}/files"
+      dest: "{{ wc_dir }}"
+    - name: user
+      src: "{{ wc_user_dir }}"
+      dest: "{{ wc_dir }}/user"
+  loop_control:
+    loop_var: sync_args
+    label: "{{ sync_args.name }}"
 
 - name: Create configuration files
   ansible.builtin.command:

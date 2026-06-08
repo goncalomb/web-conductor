@@ -1,0 +1,18 @@
+- name: Copy files ({{ sync_args.name }})
+  ansible.posix.synchronize:
+    src: "{{ sync_args.src }}/"
+    dest: "{{ sync_args.dest }}/"
+    rsync_opts:
+      - --exclude=*.j2 # exclude templates
+      - --omit-dir-times # files from other tasks will cause idempotency issues (changed mtime)
+  when: sync_args.src is ansible.builtin.directory
+
+- name: Render templates ({{ sync_args.name }})
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ sync_args.dest }}/{{ item.path[:-3] }}"
+    mode: "{{ '0600' if item.path.startswith('secrets/') else '0644' }}"
+  loop: "{{ q('community.general.filetree', sync_args.src + '/') | selectattr('path', 'match', '.*\\.j2$') }}"
+  loop_control:
+    label: "{{ item.path }}"
+  when: sync_args.src is ansible.builtin.directory

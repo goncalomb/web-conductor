@@ -14,6 +14,8 @@ services:
 
   prometheus-node-exporter:
     image: prom/node-exporter:v1
+    # ensure that wc_compose_service_base is applied
+    x-web-conductor: {}
 
   grafana:
     image: grafana/grafana:13.0

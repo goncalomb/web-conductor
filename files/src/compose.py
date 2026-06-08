@@ -10,13 +10,14 @@ class ComposeFile():
         self.name = name
         self.path = path
         self._cfg = cfg
+        self._y = yaml_load(path)
 
     def _create_traefik_labels(self, service_name, config):
-        base_name = service_name.replace('.', '-') + '-' + self._cfg.wc['name']
+        base_name = service_name.replace('.', '-') + '-' + self._cfg.wc['compose_name']
         tcg = TraefikConfigGroup()
 
         def create_router(name_parts, config, *, entrypoint='https'):
-            name = '|'.join(name_parts)
+            name = '~'.join(name_parts)
             tr = tcg.add(TraefikRouter(name))
 
             # entry point (https is set as default on traefik.toml)
@@ -32,7 +33,7 @@ class ComposeFile():
             if 'host' in config:
                 rule.append('Host(`%s`)' % (config['host']))
             elif 'admin' in config and config['admin']:
-                rule.append('Host(`%s`)' % (self._cfg.wc['admin_host']))
+                rule.append('Host(`%s`)' % (self._cfg.wc['traefik_admin_host']))
             if 'path' in config:
                 if config['path'] == '/':
                     rule.append('PathPrefix(`/`)')
@@ -49,10 +50,13 @@ class ComposeFile():
             if 'admin' in config and config['admin']:
                 tr.set('middlewares', 'auth@file', append=True)
             if 'location' in config and config['location']:
-                tm = tcg.add(TraefikMiddleware(name + '~location'))
+                tm = tcg.add(TraefikMiddleware(name + '+location'))
                 tm.set('redirectregex.regex', '^.+$')
                 tm.set('redirectregex.replacement', config['location'])
                 tr.set('middlewares', tm.name, append=True)
+                # hardcoded noop@internal service for limbo redirects
+                if service_name == 'limbo':
+                    tr.set('service', 'noop@internal')
 
         if 'route' in config:
             route = config['route']
@@ -76,36 +80,41 @@ class ComposeFile():
             labels.insert(0, 'traefik.enable=true')
         return labels
 
-    def _create_override(self, y):
-        y_new = {
+    def _create_base_y(self):
+        y = {
+            'x-base': self._cfg.wc['compose_service_base'],
             'services': {}
         }
-        services = y.get('services', {})
-        if services:
-            for s in services:
-                if 'x-web-conductor' in services[s]:
-                    conductor = services[s]['x-web-conductor'] or {}
-                    data = {
-                        'restart': 'always',
-                        'labels': []
-                    }
-                    y_new['services'][s] = data
-                    if 'repo' in conductor:
-                        data['build'] = {
-                            'context': self._cfg.get_repo_dir(s),
-                        }
-                    data['labels'].extend(self._create_traefik_labels(s, conductor))
-        return y_new
+        for name, service in self._y.get('services', {}).items():
+            if 'x-web-conductor' in service:
+                y['services'][name] = y['x-base']
+        return y if y['services'] else None
 
-    def create_override_file(self):
-        y = yaml_load(self.path)
-        if not y:
-            return None
+    def _create_data_y(self):
+        y = {
+            'services': {}
+        }
+        for name, service in self._y.get('services', {}).items():
+            if conductor := service.get('x-web-conductor', {}):
+                data = y['services'][name] = {}
+                if 'repo' in conductor:
+                    data['build'] = {
+                        'context': self._cfg.get_repo_dir(name),
+                    }
+                data['labels'] = self._create_traefik_labels(name, conductor)
+        return y if y['services'] else None
+
+    def create_merge_files(self):
         f_name, f_ext = os.path.splitext(self.name)
-        f_path = os.path.join(os.path.dirname(self.path), f_name + '.override' + f_ext)
-        y_new = self._create_override(y)
-        yaml_dump_print_changes(f_path, y_new)
-        return f_path
+        for name, y in [
+            ('base', self._create_base_y()),
+            ('data', self._create_data_y()),
+        ]:
+            if y:
+                f_path = os.path.join(os.path.dirname(self.path), f_name + '.' + name + f_ext)
+                yaml_dump_print_changes(f_path, y)
+                yield f_path
+        yield self.path
 
 
 class ComposeFileGroup():
@@ -113,11 +122,9 @@ class ComposeFileGroup():
         self.name = name
         self.files = [ComposeFile(name, path, cfg=cfg) for path in paths]
 
-    def create_override_files(self):
+    def create_merge_files(self):
         for f in self.files:
-            f_override = f.create_override_file()
-            if f_override:
-                yield f.path, f_override
+            yield from f.create_merge_files()
 
 
 def compose_files_find(cfg, *, user_only=False):
@@ -137,18 +144,15 @@ def compose_files_find(cfg, *, user_only=False):
 
 
 def compose_files_create(cfg):
-    # create override files
     all_groups = []
     for f, f_paths in compose_files_find(cfg).items():
-        f_group = []
         cg = ComposeFileGroup(f, f_paths, cfg=cfg)
-        for final_paths in cg.create_override_files():
-            f_group.extend(final_paths)
+        f_group = list(cg.create_merge_files())
         if f_group:
             all_groups.append(f_group)
 
     # create final compose.yml file
     yaml_dump_print_changes(os.path.join(cfg.root_dir, 'compose.yml'), {
-        'name': cfg.wc['name'],
+        'name': cfg.wc['compose_name'],
         'include': [{'path': g} for g in all_groups]
     })

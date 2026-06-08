@@ -2,7 +2,6 @@ services:
   traefik:
     build: ./services/traefik
     init: true
-    restart: always
     ports:
       - "80:80"
       - "443:443"
@@ -12,7 +11,7 @@ services:
       - /etc/letsencrypt/archive/:/etc/letsencrypt/archive/:ro
       - ./log/traefik/:/var/log/traefik/
     secrets:
-      - traefik_htpasswd
+      - traefik_auth_users
     x-web-conductor:
       route: # hardcoded to api@internal
         path: /
@@ -20,7 +19,6 @@ services:
 
   limbo:
     build: ./services/limbo
-    restart: always
     environment:
       - "LIMBO_DEBUG="
     x-web-conductor:
@@ -29,5 +27,5 @@ services:
         priority: 1
 
 secrets:
-  traefik_htpasswd:
-    file: ./secrets/traefik_htpasswd
+  traefik_auth_users:
+    file: ./secrets/traefik_auth_users

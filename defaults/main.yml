@@ -1,18 +1,28 @@
 # installation directory on the target host
 wc_dir: "{{ ansible_facts.user_dir }}/web-conductor"
-# docker compose project name
-wc_name: wc
-# docker compose state (community.docker.docker_compose_v2)
-wc_state: present
-# directory for user files
+
+# local user files directory to copy to the target host
 wc_user_dir: "{{ playbook_dir }}/user"
-# default host for admin routes (e.g. dashboard, metrics, etc.)
-wc_admin_host: "{{ wc_name }}.localhost"
+
+# docker compose ansible options (community.docker.docker_compose_v2)
+wc_compose_state: present
+wc_compose_build: always
+wc_compose_pull: policy
+
+# docker compose file options (for the generated compose files)
+wc_compose_name: wc
+wc_compose_service_base: # defaults for services with x-web-conductor
+  restart: unless-stopped
+
+# host for admin routes (e.g. dashboard, metrics, etc.)
+wc_traefik_admin_host: "{{ wc_compose_name }}.localhost"
+
 # authentication for admin routes
 # create a new password hash with: htpasswd -nB admin
 # or: docker run --rm -it alpine:latest sh -c "apk add apache2-utils && htpasswd -nB admin"
-wc_auth_users:
+wc_traefik_auth_users:
   - admin:$2y$05$/2fEzWkXRrlWT.dOLn.jXOadzvVLz3dR9VBkMaVk9wuvJx9wVH2Xe # admin:admin
+
 # grafana dashboards to download
 wc_grafana_dashboard_ids:
   - 1860-45 # https://grafana.com/grafana/dashboards/1860-node-exporter-full/

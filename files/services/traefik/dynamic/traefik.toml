@@ -4,4 +4,4 @@
     entryPoints=["metrics"]
 
 [http.middlewares.auth.basicAuth]
-    usersFile = "/run/secrets/traefik_htpasswd"
+    usersFile = "/run/secrets/traefik_auth_users"

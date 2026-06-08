@@ -32,11 +32,13 @@
   register: shell_result
   changed_when: shell_result.stdout | length > 0
 
-- name: "Run docker compose (state: {{ wc_state }})"
+- name: "Run docker compose (state: {{ wc_compose_state }}, build: {{ wc_compose_build }}, pull: {{ wc_compose_pull }})"
   community.docker.docker_compose_v2:
     project_src: "{{ wc_dir }}"
     remove_orphans: true
-    state: "{{ wc_state }}"
+    state: "{{ wc_compose_state }}"
+    build: "{{ wc_compose_build }}"
+    pull: "{{ wc_compose_pull }}"
 
 - name: Download grafana dashboards
   ansible.builtin.command:
@@ -44,4 +46,4 @@
     argv: "{{ ['./scripts/grafana-dash-down.sh'] + wc_grafana_dashboard_ids }}"
   register: shell_result
   changed_when: shell_result.stdout | length > 0
-  when: wc_grafana_dashboard_ids | length > 0 and wc_state != 'absent' and wc_state != 'stopped'
+  when: wc_grafana_dashboard_ids | length > 0 and wc_compose_state != 'absent' and wc_compose_state != 'stopped'

@@ -4,6 +4,12 @@ wc_dir: "{{ ansible_facts.user_dir }}/web-conductor"
 # local user files directory to copy to the target host
 wc_user_dir: "{{ playbook_dir }}/user"
 
+# whether to include the setup tasks (on main.yml)
+wc_include_setup: true
+
+# whether to setup docker (on setup.yml), requires geerlingguy.docker role
+wc_setup_docker: true
+
 # docker compose ansible options (community.docker.docker_compose_v2)
 wc_compose_state: present
 wc_compose_build: always

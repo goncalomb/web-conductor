@@ -3,6 +3,8 @@
   hosts: all
 
   tasks:
-    - name: Converge role
+    - name: Converge main role tasks
       ansible.builtin.include_role:
         name: goncalomb.web-conductor
+      vars:
+        wc_include_setup: false

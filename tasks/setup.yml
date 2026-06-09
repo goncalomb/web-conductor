@@ -1,0 +1,26 @@
+- name: Install rsync,pipx
+  ansible.builtin.apt:
+    name: rsync,pipx
+    cache_valid_time: 3600
+  become: true
+
+- name: Install Docker
+  ansible.builtin.include_role:
+    name: geerlingguy.docker
+    apply:
+      become: true
+  vars:
+    docker_users:
+      - "{{ ansible_facts.user_id }}"
+    docker_daemon_options:
+      userland-proxy: false # required for real client ips
+      features:
+        containerd-snapshotter: false # required for DinD (molecule error)
+  when: wc_setup_docker
+
+- name: Install Loki Docker logging driver
+  community.docker.docker_plugin:
+    plugin_name: grafana/loki-docker-driver:3.7.0-amd64
+    alias: loki-docker-driver
+    state: enable
+  when: wc_setup_docker

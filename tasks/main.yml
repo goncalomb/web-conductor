@@ -1,8 +1,7 @@
-- name: Install rsync,pipx
-  ansible.builtin.apt:
-    name: rsync,pipx
-    cache_valid_time: 3600
-  become: true
+- name: Include setup tasks
+  ansible.builtin.include_tasks:
+    file: setup.yml
+  when: wc_include_setup
 
 - name: Include sync tasks
   ansible.builtin.include_tasks:

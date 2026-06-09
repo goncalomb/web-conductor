@@ -13,6 +13,12 @@ wc_compose_pull: policy
 wc_compose_name: wc
 wc_compose_service_base: # defaults for services with x-web-conductor
   restart: unless-stopped
+  depends_on:
+    - loki
+  logging:
+    driver: loki-docker-driver
+    options:
+      loki-url: http://127.0.0.1:3100/loki/api/v1/push
 
 # host for admin routes (e.g. dashboard, metrics, etc.)
 wc_traefik_admin_host: "{{ wc_compose_name }}.localhost"

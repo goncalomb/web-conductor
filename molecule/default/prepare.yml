@@ -7,6 +7,11 @@
       ansible.builtin.apt:
         update_cache: true
 
+    - name: Install python3-requests
+      ansible.builtin.apt:
+        name: python3-requests
+        cache_valid_time: 3600
+
     - name: Install Docker
       ansible.builtin.include_role:
         name: geerlingguy.docker
@@ -19,3 +24,9 @@
           userland-proxy: false
           features:
             containerd-snapshotter: false # required for DinD (molecule)
+
+    - name: Install Loki Docker logging driver
+      community.docker.docker_plugin:
+        plugin_name: grafana/loki-docker-driver:3.7.0-amd64
+        alias: loki-docker-driver
+        state: enable

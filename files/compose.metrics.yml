@@ -17,6 +17,15 @@ services:
     # ensure that wc_compose_service_base is applied
     x-web-conductor: {}
 
+  loki:
+    image: grafana/loki:3.7.0
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:3100:3100 # bind to localhost for the logging driver
+    volumes:
+      - ./configs/loki/config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+
   grafana:
     image: grafana/grafana:13.0
     volumes:
@@ -29,3 +38,4 @@ services:
 
 volumes:
   prometheus-data:
+  loki-data:

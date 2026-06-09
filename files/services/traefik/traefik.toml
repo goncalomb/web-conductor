@@ -1,3 +1,6 @@
+[experimental]
+otlpLogs = true
+
 [api]
 
 [metrics.prometheus]
@@ -26,12 +29,19 @@ filePath = "/var/log/traefik/traefik.log"
 format = "json"
 level = "INFO"
 
+# [log.otlp]
+# http.endpoint = "http://loki:3100/otlp/v1/logs"
+
 [accessLog]
 filePath = "/var/log/traefik/access.log"
 format = "json"
+
 [accessLog.fields.headers.names]
 "User-Agent" = "keep"
 "Referer" = "keep"
+
+[accessLog.otlp]
+http.endpoint = "http://loki:3100/otlp/v1/logs"
 
 [providers.docker]
 exposedbydefault = false

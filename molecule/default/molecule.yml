@@ -8,8 +8,13 @@ platforms:
   - name: debian-13
     pre_build_image: true
     override_command: false
+    keep_volumes: false
     image: ghcr.io/hifis-net/debian-systemd:13
     privileged: true
     published_ports:
       - 127.0.0.1:80:80
       - 127.0.0.1:443:443
+    volumes:
+      # prevent issues when building images with DinD (nested overlay2)
+      - /var/lib/docker
+      - /var/lib/containerd

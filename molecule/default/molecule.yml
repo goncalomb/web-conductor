@@ -11,10 +11,23 @@ platforms:
     keep_volumes: false
     image: ghcr.io/hifis-net/debian-systemd:13
     privileged: true
+    # XXX: it's possible to harden the container? not privileged, cgroups error
+    # capabilities:
+    #   - SYS_ADMIN
+    #   - NET_ADMIN
+    # security_opts:
+    #   - seccomp=unconfined
+    #   - apparmor=unconfined
+    # cgroupns_mode: private
     published_ports:
       - 127.0.0.1:80:80
       - 127.0.0.1:443:443
     volumes:
+      # masks systemd-binfmt.service on the DinD container because it would
+      # overwrite the host's configuration, this is required to preserve amd64
+      # support on arm64 hosts, e.g. colima on macOS (qemu)
+      # XXX: this wouldn't be required if the container wasn't privileged
+      - /dev/null:/etc/systemd/system/systemd-binfmt.service:ro # mask
       # prevent issues when building images with DinD (nested overlay2)
       - /var/lib/docker
       - /var/lib/containerd

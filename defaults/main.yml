@@ -26,6 +26,11 @@ wc_compose_service_base: # defaults for services with x-web-conductor
     options:
       loki-url: http://127.0.0.1:3100/loki/api/v1/push
 
+# whether to enable buildx default attestations during compose build, they will
+# cause idempotency issues when wc_compose_build is set to 'always', the images
+# will differ every time and the containers will be recreated
+wc_compose_default_attestations: false
+
 # host for admin routes (e.g. dashboard, metrics, etc.)
 wc_traefik_admin_host: "{{ wc_compose_name }}.localhost"
 

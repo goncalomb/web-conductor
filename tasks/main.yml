@@ -38,6 +38,8 @@
     state: "{{ wc_compose_state }}"
     build: "{{ wc_compose_build }}"
     pull: "{{ wc_compose_pull }}"
+  environment:
+    BUILDX_NO_DEFAULT_ATTESTATIONS: "{{ wc_compose_default_attestations | ternary('0', '1') }}"
 
 - name: Download grafana dashboards
   ansible.builtin.command:

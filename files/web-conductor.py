@@ -70,7 +70,7 @@ def main():
             workspace_update(cfg)
 
     if args.command == 'compose':
-        call_compose(args.args, ['sudo'] if args.sudo else [])
+        call_compose(cfg, args.args, ['sudo'] if args.sudo else [])
 
     if args.command == 'volume':
         if args.command_volume == 'backup':
@@ -80,7 +80,7 @@ def main():
     if args.command in aliased_compose_cmds:
         cmd_args = list(aliased_compose_cmds[args.command])
         cmd_args.extend(args.args)
-        call_compose(cmd_args, ['sudo'] if args.sudo else [])
+        call_compose(cfg, cmd_args, ['sudo'] if args.sudo else [])
 
 
 if __name__ == '__main__':

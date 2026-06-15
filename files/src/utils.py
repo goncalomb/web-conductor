@@ -59,5 +59,10 @@ def call_process(*args, **kwargs):
         signal.signal(signal.SIGINT, prev_int)
 
 
-def call_compose(args, args_pre=[]):
-    return call_process(args_pre + ['docker', 'compose'] + args)
+def call_compose(cfg, args, args_pre=[]):
+    return call_process(
+        args_pre + ['docker', 'compose'] + args,
+        env={
+            'BUILDX_NO_DEFAULT_ATTESTATIONS': '0' if cfg.wc['compose_default_attestations'] else '1',
+        }
+    )

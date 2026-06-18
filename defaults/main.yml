@@ -24,7 +24,14 @@ wc_compose_service_base: # defaults for services with x-web-conductor
   logging:
     driver: loki-docker-driver
     options:
+      # https://docs.docker.com/engine/logging/configure/
+      mode: non-blocking
+      max-buffer-size: 10m
+      # https://grafana.com/docs/loki/latest/send-data/docker-driver/
+      # https://github.com/grafana/loki/blob/main/clients/cmd/docker-driver/config.go
+      # https://github.com/grafana/loki/blob/main/clients/pkg/util/config.go
       loki-url: http://127.0.0.1:3100/loki/api/v1/push
+      loki-max-backoff: 5s # default is 5m (too long, can cause deadlocks)
 
 # whether to enable buildx default attestations during compose build, they will
 # cause idempotency issues when wc_compose_build is set to 'always', the images

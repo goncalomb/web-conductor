@@ -9,5 +9,6 @@ compose.*.yaml
 compose.*.yml
 compose.yaml
 compose.yml
+!compose.vpn.yml
 !compose.proxy.yml
 !compose.metrics.yml

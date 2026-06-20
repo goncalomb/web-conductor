@@ -22,6 +22,7 @@ platforms:
     published_ports:
       - 127.0.0.1:80:80
       - 127.0.0.1:443:443
+      - 127.0.0.1:51825:51825/udp
     volumes:
       # masks systemd-binfmt.service on the DinD container because it would
       # overwrite the host's configuration, this is required to preserve amd64

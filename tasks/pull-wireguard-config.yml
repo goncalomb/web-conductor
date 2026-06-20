@@ -1,0 +1,11 @@
+- name: Pull WireGuard configuration
+  ansible.builtin.synchronize:
+    src: /config/
+    dest: "{{ wc_pull_dir }}/wireguard-config/"
+    mode: pull
+    rsync_opts:
+      # proxy rsync to the wireguard container (install rsync if not present)
+      - --rsync-path='docker compose --project-directory "{{ wc_dir }}" exec -T wireguard sh -c "apk add -q rsync && rsync \$@" --'
+      - --include=peer*
+      - --exclude=*
+      - --mkpath

@@ -2,9 +2,17 @@
 - name: Converge
   hosts: all
 
+  vars:
+    wc_include_setup: false
+    wc_wireguard_server_url: 127.0.0.1 # DinD container, don't use internal IP
+    wc_wireguard_server_port: 51825 # avoid conflict with default client port
+
   tasks:
     - name: Converge main role tasks
       ansible.builtin.include_role:
         name: goncalomb.web-conductor
-      vars:
-        wc_include_setup: false
+
+    - name: Converge pull-wireguard-config role tasks
+      ansible.builtin.include_role:
+        name: goncalomb.web-conductor
+        tasks_from: pull-wireguard-config

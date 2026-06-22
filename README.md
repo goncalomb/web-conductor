@@ -16,6 +16,9 @@ This project is now an Ansible role (2026). Ansible is required to prepare and d
   - Access and Traefik logs mounted on the host machine;
   - Log rotation;
   - Automatic discovery of Let's Encrypt certificates on the host machine (`/etc/letsencrypt`);
+- [WireGuard](https://www.wireguard.com/) from [linuxserver/docker-wireguard](https://github.com/linuxserver/docker-wireguard):
+  - Shares the same internal network as the other services;
+  - Can be used to protect the admin routes (split-horizon DNS);
 - [Grafana](https://grafana.com/oss/grafana/) provisioned with some default dashboards;
 - [Loki](https://grafana.com/oss/loki/) preconfigured for log collection (container and access log);
 - [Prometheus](https://grafana.com/oss/prometheus/) preconfigured for metrics collection;
@@ -26,7 +29,6 @@ TODO:
 
 - Built-in Certbot configuration;
 - Markdown-based admin panel documentation;
-- VPN for admin panel access (WireGuard);
 - Tempo for tracing;
 - Ansible tasks for backup;
 
@@ -62,12 +64,20 @@ molecule destroy
 
 ## Using
 
-Use it as a normal Ansible role (not on Ansible Galaxy, use git):
+Use it as a normal Ansible role (not on Ansible Galaxy, use git, see example).
+
+### Tasks
+
+- `main` (default): prepares the system and starts the services;
+- `pull-wireguard-config`: pulls the WireGuard peer configuration;
+
+### Example
 
 `requirements.yml`
 
 ```yaml
 roles:
+  - name: geerlingguy.docker # required for docker setup (see wc_setup_docker var)
   - name: goncalomb.web-conductor
     src: git+https://github.com/goncalomb/web-conductor.git
 ```
@@ -75,17 +85,24 @@ roles:
 `playbook.yml`
 
 ```yaml
-- name: Example playbook
+- name: Example playbook (with WireGuard)
   hosts: all
+
+  vars:
+    wc_traefik_admin_host: admin.internal
+    wc_traefik_admin_use_internal: true
+    wc_traefik_admin_use_auth: false
+
   tasks:
-    - name: Run web-conductor
+    - name: Run web-conductor (main tasks)
       ansible.builtin.include_role:
         name: goncalomb.web-conductor
-      vars:
-        wc_traefik_admin_host: admin.localhost
-```
 
-Running the role (main tasks) will prepare the entire system and start the services.
+    - name: Pull WireGuard config (optional)
+      ansible.builtin.include_role:
+        name: goncalomb.web-conductor
+        tasks_from: pull-wireguard-config
+```
 
 ## Configuration
 

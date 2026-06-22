@@ -3,5 +3,7 @@
     'wc_compose_service_base',
     'wc_compose_default_attestations',
     'wc_traefik_admin_host',
+    'wc_traefik_admin_use_internal',
+    'wc_traefik_admin_use_auth',
 ] %}
 {{ dict(wc_config_keys | zip(q('ansible.builtin.vars', *wc_config_keys))) | to_nice_yaml }}

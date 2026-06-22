@@ -18,6 +18,7 @@ services:
       - PERSISTENTKEEPALIVE_PEERS=all
       - LOG_CONFS=false
     volumes:
+      - ./configs/wireguard/coredns:/config/coredns:ro
       - wireguard-config:/config
       - /lib/modules:/lib/modules
     ports:

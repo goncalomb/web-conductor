@@ -48,7 +48,10 @@ class ComposeFile():
 
             # middlewares
             if 'admin' in config and config['admin']:
-                tr.set('middlewares', 'auth@file', append=True)
+                if self._cfg.wc['traefik_admin_use_internal']:
+                    tr.set('middlewares', 'internal@file', append=True)
+                if self._cfg.wc['traefik_admin_use_auth']:
+                    tr.set('middlewares', 'auth@file', append=True)
             if 'location' in config and config['location']:
                 tm = tcg.add(TraefikMiddleware(name + '+location'))
                 tm.set('redirectregex.regex', '^.+$')

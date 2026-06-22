@@ -12,6 +12,9 @@ services:
       - ./log/traefik/:/var/log/traefik/
     secrets:
       - traefik_auth_users
+    networks:
+      default:
+        ipv4_address: 172.20.0.1
     x-web-conductor:
       route: # hardcoded to api@internal
         path: /
@@ -29,3 +32,11 @@ services:
 secrets:
   traefik_auth_users:
     file: ./secrets/traefik_auth_users
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/23
+          ip_range: 172.20.1.0/24
+          gateway: 172.20.1.254

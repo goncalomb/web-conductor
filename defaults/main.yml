@@ -44,6 +44,12 @@ wc_compose_default_attestations: false
 # host for admin routes (e.g. dashboard, metrics, etc.)
 wc_traefik_admin_host: "{{ wc_compose_name }}.localhost"
 
+# whether to restrict admin routes to the internal network (e.g. wireguard)
+wc_traefik_admin_use_internal: false
+
+# whether to enable basic auth for admin routes (see wc_traefik_auth_users)
+wc_traefik_admin_use_auth: true
+
 # authentication for admin routes
 # create a new password hash with: htpasswd -nB admin
 # or: docker run --rm -it alpine:latest sh -c "apk add apache2-utils && htpasswd -nB admin"

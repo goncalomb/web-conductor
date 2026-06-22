@@ -5,3 +5,6 @@
 
 [http.middlewares.auth.basicAuth]
     usersFile = "/run/secrets/traefik_auth_users"
+
+[http.middlewares.internal.ipAllowList]
+    sourceRange = ["172.20.0.0/23"]

@@ -1,0 +1,24 @@
+services:
+  homepage:
+    image: gethomepage/homepage:v1.13
+    volumes:
+      # can't mount the configs directory because homepage requires write
+      # access to create other empty config files (the configs should be ro)
+      - ./configs/homepage/bookmarks.yaml:/app/config/bookmarks.yaml:ro
+      - ./configs/homepage/docker.yaml:/app/config/docker.yaml:ro
+      - ./configs/homepage/services.yaml:/app/config/services.yaml:ro
+      - ./configs/homepage/settings.yaml:/app/config/settings.yaml:ro
+      - ./configs/homepage/widgets.yaml:/app/config/widgets.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - LOG_TARGETS=stdout
+      - HOMEPAGE_ALLOWED_HOSTS=${WC_TRAEFIK_ADMIN_HOST:?}
+      # XXX: consider non-root and docker proxy
+      # https://gethomepage.dev/installation/docker/
+      # https://gethomepage.dev/configs/docker/
+      # - PUID=1000
+      # - PGID=1000
+    x-web-conductor:
+      route:
+        path: /
+        admin: true

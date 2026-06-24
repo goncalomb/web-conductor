@@ -1,3 +1,6 @@
+x-web-conductor:
+  group: Core
+
 services:
   wireguard:
     # https://github.com/linuxserver/docker-wireguard
@@ -26,7 +29,10 @@ services:
     sysctls:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
-    x-web-conductor: {} # ensure that wc_compose_service_base is applied
+    x-web-conductor:
+      name: WireGuard
+      homepage:
+        icon: wireguard.png
 
 volumes:
   wireguard-config:

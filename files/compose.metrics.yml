@@ -1,3 +1,6 @@
+x-web-conductor:
+  group: Telemetry
+
 services:
   prometheus:
     image: prom/prometheus:v3
@@ -8,14 +11,20 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.external-url=/prometheus
     x-web-conductor:
+      name: Prometheus
       route:
         path: /prometheus
         admin: true
+      homepage:
+        icon: prometheus.png
+        widget:
+          type: prometheus
+          url: http://prometheus:9090/prometheus/
 
   prometheus-node-exporter:
     image: prom/node-exporter:v1
-    # ensure that wc_compose_service_base is applied
-    x-web-conductor: {}
+    x-web-conductor:
+      homepage: true
 
   loki:
     image: grafana/loki:3.7.0
@@ -32,9 +41,16 @@ services:
       - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
     x-web-conductor:
+      name: Grafana
       route:
         path: /grafana
         admin: true
+      homepage:
+        icon: grafana.png
+        widget:
+          type: grafana
+          version: 2
+          url: http://grafana:3000/grafana/
 
 volumes:
   prometheus-data:

@@ -1,3 +1,9 @@
+# internal traefik api and dashboard router (http, for homepage widget)
+[http.routers.traefik]
+    rule="Path(`/traefik`) || PathPrefix(`/traefik/`)"
+    service="api@internal"
+    entryPoints=["traefik"]
+
 [http.routers.metrics]
     rule="PathPrefix(`/metrics`)"
     service="prometheus@internal"

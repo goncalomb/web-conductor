@@ -1,3 +1,6 @@
+x-web-conductor:
+  group: Core
+
 services:
   traefik:
     build: ./services/traefik
@@ -16,18 +19,27 @@ services:
       default:
         ipv4_address: 172.20.0.1
     x-web-conductor:
+      name: Traefik
       route: # hardcoded to api@internal
-        path: /
+        path: /traefik
         admin: true
+      homepage:
+        icon: traefik.png
+        widget:
+          type: traefik
+          url: http://traefik:81/traefik/
 
   limbo:
     build: ./services/limbo
     environment:
       - "LIMBO_DEBUG="
     x-web-conductor:
+      name: Limbo
+      description: Fallback service for unknown routes.
       route:
         path: /
         priority: 1
+      homepage: true
 
 secrets:
   traefik_auth_users:

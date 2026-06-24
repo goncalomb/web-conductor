@@ -2,6 +2,7 @@
 otlpLogs = true
 
 [api]
+basepath = "/traefik"
 
 [metrics.prometheus]
 manualRouting = true
@@ -20,6 +21,9 @@ address = ":443"
 asDefault = true
 
 [entryPoints.https.http.tls]
+
+[entryPoints.traefik]
+address = ":81"
 
 [entryPoints.metrics]
 address = ":82"

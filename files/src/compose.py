@@ -1,7 +1,7 @@
 import os
 import re
 
-from .traefik import TraefikConfigGroup, TraefikMiddleware, TraefikRouter, TraefikService
+from .labels import HomepageConfig, TraefikConfigGroup, TraefikMiddleware, TraefikRouter, TraefikService
 from .utils import yaml_dump_print_changes, yaml_load
 
 
@@ -11,6 +11,8 @@ class ComposeFile():
         self.path = path
         self._cfg = cfg
         self._y = yaml_load(path)
+        wc = self._y.get('x-web-conductor', {})
+        self._wc_group = wc.get('group', '.'.join(self.name.split('.')[1:-1]))
 
     def _create_traefik_labels(self, service_name, config):
         base_name = service_name.replace('.', '-') + '-' + self._cfg.wc['compose_name']
@@ -83,6 +85,26 @@ class ComposeFile():
             labels.insert(0, 'traefik.enable=true')
         return labels
 
+    def _create_homepage_labels(self, service_name, config):
+        h = HomepageConfig()
+        if homepage := config.get('homepage', False):
+            # set basic homepage config
+            h.set('group', self._wc_group)
+            h.set('icon', 'mdi-server-outline')
+            h.set('name', config.get('name', service_name))
+            if 'description' in config:
+                h.set('description', config['description'])
+            # set href from route
+            if route := config.get('route', {}):
+                host = route.get('host', self._cfg.wc['traefik_admin_host'] if route.get('admin', False) else None)
+                if host:
+                    h.set('href', 'https://%s%s' % (host, route.get('path', '/')))
+            # set homepage extras
+            if isinstance(homepage, dict):
+                for k, v in homepage.items():
+                    h.set(k, v)
+        return list(h.to_labels())
+
     def _create_base_y(self):
         y = {
             'x-base': self._cfg.wc['compose_service_base'],
@@ -105,6 +127,7 @@ class ComposeFile():
                         'context': self._cfg.get_repo_dir(name),
                     }
                 data['labels'] = self._create_traefik_labels(name, conductor)
+                data['labels'] += self._create_homepage_labels(name, conductor)
         return y if y['services'] else None
 
     def create_merge_files(self):

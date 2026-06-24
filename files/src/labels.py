@@ -1,4 +1,4 @@
-class TraefikConfig:
+class LabelsConfig:
     def __init__(self, prefix=[]):
         self._data = {}
         self._prefix = prefix
@@ -50,16 +50,21 @@ class TraefikConfigGroup():
             yield from c.to_labels()
 
 
-class TraefikService(TraefikConfig):
+class TraefikService(LabelsConfig):
     def __init__(self, name):
         super().__init__(prefix=['traefik', 'http', 'services', name])
 
 
-class TraefikRouter(TraefikConfig):
+class TraefikRouter(LabelsConfig):
     def __init__(self, name):
         super().__init__(prefix=['traefik', 'http', 'routers', name])
 
 
-class TraefikMiddleware(TraefikConfig):
+class TraefikMiddleware(LabelsConfig):
     def __init__(self, name):
         super().__init__(prefix=['traefik', 'http', 'middlewares', name])
+
+
+class HomepageConfig(LabelsConfig):
+    def __init__(self):
+        super().__init__(prefix=['homepage'])

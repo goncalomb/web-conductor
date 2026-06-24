@@ -19,6 +19,7 @@ This project is now an Ansible role (2026). Ansible is required to prepare and d
 - [WireGuard](https://www.wireguard.com/) from [linuxserver/docker-wireguard](https://github.com/linuxserver/docker-wireguard):
   - Shares the same internal network as the other services;
   - Can be used to protect the admin routes (split-horizon DNS);
+- [Homepage](https://gethomepage.dev/) admin panel with docker service discovery;
 - [Grafana](https://grafana.com/oss/grafana/) provisioned with some default dashboards;
 - [Loki](https://grafana.com/oss/loki/) preconfigured for log collection (container and access log);
 - [Prometheus](https://grafana.com/oss/prometheus/) preconfigured for metrics collection;
@@ -28,7 +29,6 @@ This project is now an Ansible role (2026). Ansible is required to prepare and d
 TODO:
 
 - Built-in Certbot configuration;
-- Markdown-based admin panel documentation;
 - Tempo for tracing;
 - Ansible tasks for backup;
 

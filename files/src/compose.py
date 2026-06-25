@@ -117,6 +117,10 @@ class ComposeFile():
 
     def _create_data_y(self):
         y = {
+            'x-logging': {
+                'driver': self._cfg.wc['compose_logging_driver'],
+                'options': self._cfg.wc['compose_logging_options'],
+            },
             'services': {}
         }
         for name, service in self._y.get('services', {}).items():
@@ -126,6 +130,9 @@ class ComposeFile():
                     data['build'] = {
                         'context': self._cfg.get_repo_dir(name),
                     }
+                if name != 'loki':
+                    data['depends_on'] = ['loki']
+                data['logging'] = y['x-logging']
                 data['labels'] = self._create_traefik_labels(name, conductor)
                 data['labels'] += self._create_homepage_labels(name, conductor)
         return y if y['services'] else None

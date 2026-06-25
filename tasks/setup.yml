@@ -19,6 +19,6 @@
 - name: Install Loki Docker logging driver
   community.docker.docker_plugin:
     plugin_name: "grafana/loki-docker-driver:3.7.0-{{ 'arm64' if ansible_facts.architecture in ['aarch64', 'arm64'] else 'amd64' }}"
-    alias: loki-docker-driver
+    alias: "{{ wc_compose_logging_driver }}"
     state: enable
   when: wc_setup_docker

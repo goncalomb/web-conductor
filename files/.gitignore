@@ -12,4 +12,4 @@ compose.yml
 !compose.vpn.yml
 !compose.home.yml
 !compose.proxy.yml
-!compose.metrics.yml
+!compose.telemetry.yml

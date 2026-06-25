@@ -24,16 +24,21 @@ services:
   prometheus-node-exporter:
     image: prom/node-exporter:v1
     x-web-conductor:
-      homepage: true
+      name: Prometheus Node Exporter
+      homepage:
+        icon: prometheus-node-exporter.png
 
   loki:
     image: grafana/loki:3.7.0
-    restart: unless-stopped
     ports:
       - 127.0.0.1:3100:3100 # bind to localhost for the logging driver
     volumes:
       - ./configs/loki/config.yaml:/etc/loki/local-config.yaml:ro
       - loki-data:/loki
+    x-web-conductor:
+      name: Loki
+      homepage:
+        icon: loki.png
 
   grafana:
     image: grafana/grafana:13.0

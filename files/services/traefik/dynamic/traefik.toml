@@ -11,6 +11,8 @@
 
 [http.middlewares.auth.basicAuth]
     usersFile = "/run/secrets/traefik_auth_users"
+    removeHeader = true
+    headerField = "X-Auth-User"
 
 [http.middlewares.internal.ipAllowList]
     sourceRange = ["172.20.0.0/23"]

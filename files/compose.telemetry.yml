@@ -56,6 +56,8 @@ services:
           type: grafana
           version: 2
           url: http://grafana:3000/grafana/
+          username: admin
+          password: admin
 
 volumes:
   prometheus-data:

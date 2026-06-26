@@ -5,7 +5,7 @@
     mode: pull
     rsync_opts:
       # proxy rsync to the wireguard container (install rsync if not present)
-      - --rsync-path='docker compose --project-directory "{{ wc_dir }}" exec -T wireguard sh -c "apk add -q rsync && rsync \$@" --'
+      - --rsync-path="{{ wc_dir }}/scripts/wireguard-rsync.sh"
       - --include=peer*
       - --exclude=*
       - --mkpath

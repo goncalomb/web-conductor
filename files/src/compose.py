@@ -12,7 +12,9 @@ class ComposeFile():
         self._cfg = cfg
         self._y = yaml_load(path)
         wc = self._y.get('x-web-conductor', {})
-        self._wc_group = wc.get('group', '.'.join(self.name.split('.')[1:-1]))
+        # TODO: better group defaults (we should detect user files)
+        # self._wc_group = wc.get('group', '.'.join(self.name.split('.')[1:-1]))
+        self._wc_group = wc.get('group', 'User Services')
 
     def _create_traefik_labels(self, service_name, config):
         base_name = service_name.replace('.', '-') + '-' + self._cfg.wc['compose_name']
@@ -85,7 +87,7 @@ class ComposeFile():
             # set basic homepage config
             h.set('group', self._wc_group)
             h.set('icon', 'mdi-server-outline')
-            h.set('name', config.get('name', service_name))
+            h.set('name', config.get('name', service_name + ' @ ' + self.name))
             if 'description' in config:
                 h.set('description', config['description'])
             # set href from route

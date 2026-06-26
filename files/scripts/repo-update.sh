@@ -33,6 +33,10 @@ repo-update() {
         else
             git -C "$2" pull --ff-only >&2
         fi
+        # remove FETCH_HEAD and ORIG_HEAD to avoid docker cache invalidation
+        # (COPY . .) if .dockerignore is not setup properly
+        # XXX: is this the only issue? see above
+        rm -f "$2/.git/FETCH_HEAD" "$2/.git/ORIG_HEAD"
         if [ "$HEAD_REF" != "$(git -C "$2" rev-parse HEAD)" ]; then
             echo "updated '$2'"
         fi

@@ -73,9 +73,12 @@ wc_wireguard_allowed_ips: 0.0.0.0/0, ::/0
 wc_homepage_settings:
   title: "{{ wc_admin_title }}"
   description: "{{ wc_admin_description }}"
+  # XXX: is there a way to not list all the groups here but still have the
+  # bookmarks be last (with style row)? the user must be free to use any name!
   layout:
     Core:
     Telemetry:
+    User Services:
     Web Conductor:
       style: row
       columns: 4

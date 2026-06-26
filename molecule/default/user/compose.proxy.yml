@@ -1,0 +1,10 @@
+services:
+  limbo:
+    x-web-conductor:
+      routes:
+        test:
+          host: test.localhost
+          location: https://example.com/
+        duck:
+          host: duck.localhost
+          location: https://duckduckgo.com/

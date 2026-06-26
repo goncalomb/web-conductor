@@ -1,0 +1,7 @@
+((auth) => {
+  if (auth) document.getElementById('widgets-wrap').appendChild(
+    Object.assign(document.createElement('template'), {
+      innerHTML: `<div class="self-center"><strong><a href="/logout">Logout</a></strong></div>`
+    }).content,
+  );
+})({{ wc_traefik_admin_use_auth | to_json }});

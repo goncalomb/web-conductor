@@ -32,14 +32,25 @@ services:
   limbo:
     build: ./services/limbo
     environment:
-      - "LIMBO_DEBUG="
+      - LIMBO_DEBUG=
+      - LIMBO_LOGOUT_REDIRECT=
     x-web-conductor:
       name: Limbo
       description: Fallback service for unknown routes.
       route:
         path: /
         priority: 1
-      homepage: true
+      routes:
+        limbo:
+          path: /limbo
+          admin: true
+        logout:
+          path: /logout
+          admin: true
+          auth: false
+      homepage:
+        href: /limbo
+        weight: 999
 
 secrets:
   traefik_auth_users:

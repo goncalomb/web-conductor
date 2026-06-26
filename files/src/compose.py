@@ -21,26 +21,25 @@ class ComposeFile():
         def create_router(name_parts, config, *, entrypoint='https'):
             name = '~'.join(name_parts)
             tr = tcg.add(TraefikRouter(name))
+            r_admin = config.get('admin', False)
 
             # entry point (https is set as default on traefik.toml)
             if entrypoint != 'https':
                 tr.set('entryPoints', entrypoint)
 
             # hardcoded service for traefik dashboard
-            if service_name == 'traefik' and 'admin' in config and config['admin']:
+            if service_name == 'traefik' and r_admin:
                 tr.set('service', 'api@internal')
 
             # rule
             rule = []
-            if 'host' in config:
-                rule.append('Host(`%s`)' % (config['host']))
-            elif 'admin' in config and config['admin']:
-                rule.append('Host(`%s`)' % (self._cfg.wc['traefik_admin_host']))
-            if 'path' in config:
-                if config['path'] == '/':
+            if r_host := config.get('host', self._cfg.wc['traefik_admin_host'] if r_admin else None):
+                rule.append('Host(`%s`)' % (r_host))
+            if r_path := config.get('path', None):
+                if r_path == '/':
                     rule.append('PathPrefix(`/`)')
                 else:
-                    rule.append('(Path(`%s`) || PathPrefix(`%s/`))' % (config['path'], config['path']))
+                    rule.append('(Path(`%s`) || PathPrefix(`%s/`))' % (r_path, r_path))
             if rule:
                 tr.set('rule', ' && '.join(rule))
 
@@ -49,36 +48,31 @@ class ComposeFile():
                 tr.set('priority', config['priority'])
 
             # middlewares
-            if 'admin' in config and config['admin']:
-                if self._cfg.wc['traefik_admin_use_internal']:
-                    tr.set('middlewares', 'internal@file', append=True)
-                if self._cfg.wc['traefik_admin_use_auth']:
-                    tr.set('middlewares', 'auth@file', append=True)
-            if 'location' in config and config['location']:
+            if config.get('internal', r_admin and self._cfg.wc['traefik_admin_use_internal']):
+                tr.set('middlewares', 'internal@file', append=True)
+            if config.get('auth', r_admin and self._cfg.wc['traefik_admin_use_auth']):
+                tr.set('middlewares', 'auth@file', append=True)
+
+            if location := config.get('location', None):
                 tm = tcg.add(TraefikMiddleware(name + '+location'))
                 tm.set('redirectregex.regex', '^.+$')
-                tm.set('redirectregex.replacement', config['location'])
+                tm.set('redirectregex.replacement', location)
                 tr.set('middlewares', tm.name, append=True)
                 # hardcoded noop@internal service for limbo redirects
                 if service_name == 'limbo':
                     tr.set('service', 'noop@internal')
 
-        if 'route' in config:
-            route = config['route']
+        # main service route
+        if route := config.get('route', None):
             if 'port' in route:
                 ts = tcg.add(TraefikService(base_name))
                 ts.set('loadbalancer.server.port', route['port'])
-
-            # XXX: no longer using another entrypoint for admin routes
-            # if 'admin' in route and route['admin']:
-            #     create_router([base_name], route, entrypoint='traefik')
-            # else:
-            #     create_router([base_name], route)
             create_router([base_name], route)
 
-        if 'routes' in config:
-            for key in config['routes']:
-                create_router([base_name, key], config['routes'][key])
+        # extra service routes
+        if routes := config.get('routes', None):
+            for key in routes:
+                create_router([base_name, key], routes[key])
 
         labels = list(tcg.to_labels())
         if labels:

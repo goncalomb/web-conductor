@@ -124,7 +124,7 @@ class ComposeFile():
                 data = y['services'][name] = {}
                 if 'repo' in conductor:
                     data['build'] = {
-                        'context': self._cfg.get_repo_dir(name),
+                        'context': self._cfg.get_repo_dir(name, os.path.dirname(self.path)),
                     }
                 if name != 'loki':
                     data['depends_on'] = ['loki']
@@ -133,14 +133,14 @@ class ComposeFile():
                 data['labels'] += self._create_homepage_labels(name, conductor)
         return y if y['services'] else None
 
-    def create_merge_files(self):
+    def create_merge_files(self, *, dir=None):
         f_name, f_ext = os.path.splitext(self.name)
         for name, y in [
             ('base', self._create_base_y()),
             ('data', self._create_data_y()),
         ]:
             if y:
-                f_path = os.path.join(os.path.dirname(self.path), f_name + '.' + name + f_ext)
+                f_path = os.path.join(dir or os.path.dirname(self.path), f_name + '.' + name + f_ext)
                 yaml_dump_print_changes(f_path, y)
                 yield f_path
         yield self.path

@@ -1,0 +1,171 @@
+# serializer version: 1
+# name: test_files[compose.proxy.yml][0_compose.proxy.base.yml]
+  '''
+  x-base: &id001
+    restart: unless-stopped
+  services:
+    traefik: *id001
+    limbo: *id001
+  
+  '''
+# ---
+# name: test_files[compose.proxy.yml][0_compose.proxy.data.yml]
+  '''
+  x-logging: &id001
+    driver: wc-test-driver
+    options:
+      mode: non-blocking
+  services:
+    traefik:
+      depends_on:
+      - loki
+      logging: *id001
+      labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik-wc-test.service=api@internal
+      - traefik.http.routers.traefik-wc-test.rule=Host(`wc.localhost`) && (Path(`/traefik`)
+        || PathPrefix(`/traefik/`))
+      - traefik.http.routers.traefik-wc-test.middlewares=internal@file,auth@file
+      - homepage.group=Core Test
+      - homepage.icon=traefik.png
+      - homepage.name=Traefik
+      - homepage.description=Traefik 123
+      - homepage.href=https://wc.localhost/traefik
+    limbo:
+      depends_on:
+      - loki
+      logging: *id001
+      labels:
+      - traefik.enable=true
+      - traefik.http.services.limbo-wc-test.loadbalancer.server.port=80
+      - traefik.http.routers.limbo-wc-test.rule=PathPrefix(`/`)
+      - traefik.http.routers.limbo-wc-test.priority=1
+      - homepage.group=Core Test
+      - homepage.icon=mdi-server-outline
+      - homepage.name=Limbo
+      - homepage.description=Limbo 123
+  
+  '''
+# ---
+# name: test_files[compose.proxy.yml][0_compose.proxy.yml]
+  '''
+  x-web-conductor:
+    group: Core Test
+  services:
+    traefik:
+      x-web-conductor:
+        name: Traefik
+        description: Traefik 123
+        route:
+          path: /traefik
+          admin: true
+        homepage:
+          icon: traefik.png
+    limbo:
+      x-web-conductor:
+        name: Limbo
+        description: Limbo 123
+        route:
+          path: /
+          port: 80
+          priority: 1
+        homepage: true
+  
+  '''
+# ---
+# name: test_files[compose.proxy.yml][1_compose.proxy.base.yml]
+  '''
+  x-base: &id001
+    restart: unless-stopped
+  services:
+    limbo: *id001
+  
+  '''
+# ---
+# name: test_files[compose.proxy.yml][1_compose.proxy.data.yml]
+  '''
+  x-logging: &id001
+    driver: wc-test-driver
+    options:
+      mode: non-blocking
+  services:
+    limbo:
+      depends_on:
+      - loki
+      logging: *id001
+      labels:
+      - traefik.enable=true
+      - traefik.http.routers.limbo-wc-test~test.rule=Host(`test.localhost`)
+      - traefik.http.routers.limbo-wc-test~test.middlewares=limbo-wc-test~test+location
+      - traefik.http.routers.limbo-wc-test~test.service=noop@internal
+      - traefik.http.middlewares.limbo-wc-test~test+location.redirectregex.regex=^.+$
+      - traefik.http.middlewares.limbo-wc-test~test+location.redirectregex.replacement=https://example.com/
+      - traefik.http.routers.limbo-wc-test~duck.rule=Host(`duck.localhost`)
+      - traefik.http.routers.limbo-wc-test~duck.middlewares=limbo-wc-test~duck+location
+      - traefik.http.routers.limbo-wc-test~duck.service=noop@internal
+      - traefik.http.middlewares.limbo-wc-test~duck+location.redirectregex.regex=^.+$
+      - traefik.http.middlewares.limbo-wc-test~duck+location.redirectregex.replacement=https://duckduckgo.com/
+  
+  '''
+# ---
+# name: test_files[compose.proxy.yml][1_compose.proxy.yml]
+  '''
+  services:
+    limbo:
+      x-web-conductor:
+        routes:
+          test:
+            host: test.localhost
+            location: https://example.com/
+          duck:
+            host: duck.localhost
+            location: https://duckduckgo.com/
+  
+  '''
+# ---
+# name: test_files[compose.user.yml][0_compose.user.base.yml]
+  '''
+  x-base: &id001
+    restart: unless-stopped
+  services:
+    todo-list-app: *id001
+  
+  '''
+# ---
+# name: test_files[compose.user.yml][0_compose.user.data.yml]
+  '''
+  x-logging: &id001
+    driver: wc-test-driver
+    options:
+      mode: non-blocking
+  services:
+    todo-list-app:
+      build:
+        context: ../workspace/services/todo-list-app/repo
+      depends_on:
+      - loki
+      logging: *id001
+      labels:
+      - traefik.enable=true
+      - traefik.http.routers.todo-list-app-wc-test.rule=Host(`todo.localhost`)
+      - homepage.group=User Services
+      - homepage.icon=mdi-server-outline
+      - homepage.name=todo-list-app @ compose.user.yml
+      - homepage.href=https://todo.localhost/
+  
+  '''
+# ---
+# name: test_files[compose.user.yml][0_compose.user.yml]
+  '''
+  services:
+    todo-list-app:
+      x-web-conductor:
+        repo:
+          url: https://github.com/dockersamples/todo-list-app.git
+          mtime: False
+        route:
+          host: todo.localhost
+        homepage: true
+  
+  '''
+# ---

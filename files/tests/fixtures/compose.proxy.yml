@@ -1,0 +1,21 @@
+x-web-conductor:
+  group: Core Test
+services:
+  traefik:
+    x-web-conductor:
+      name: Traefik
+      description: Traefik 123
+      route:
+        path: /traefik
+        admin: true
+      homepage:
+        icon: traefik.png
+  limbo:
+    x-web-conductor:
+      name: Limbo
+      description: Limbo 123
+      route:
+        path: /
+        port: 80
+        priority: 1
+      homepage: true

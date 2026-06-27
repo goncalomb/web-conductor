@@ -5,11 +5,11 @@ __pycache__
 /user
 /log
 
-compose.*.yaml
-compose.*.yml
-compose.yaml
-compose.yml
-!compose.vpn.yml
-!compose.home.yml
-!compose.proxy.yml
-!compose.telemetry.yml
+/compose.*.yaml
+/compose.*.yml
+/compose.yaml
+/compose.yml
+!/compose.vpn.yml
+!/compose.home.yml
+!/compose.proxy.yml
+!/compose.telemetry.yml

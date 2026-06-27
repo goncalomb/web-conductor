@@ -25,5 +25,8 @@ class Config:
             if k[:3] == 'wc_':
                 self.wc[k[3:]] = v
 
-    def get_repo_dir(self, service_name):
-        return os.path.join(self.root_dir, 'workspace', 'services', service_name, 'repo')
+    def get_repo_dir(self, service_name, rel_start=None):
+        path = os.path.join(self.root_dir, 'workspace', 'services', service_name, 'repo')
+        if rel_start:
+            path = os.path.relpath(path, rel_start)
+        return path

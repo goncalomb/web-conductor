@@ -4,15 +4,16 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #   "pyyaml",
+#   "pydantic",
 # ]
 # ///
 
 import argparse
 import os
 
-from src.compose import compose_files_create, compose_files_find
+from src.compose import compose_call, compose_files_create
 from src.config import Config
-from src.utils import FatalError, call_compose, print_err
+from src.utils import FatalError
 from src.volume import volume_backup
 from src.workspace import workspace_update
 
@@ -70,7 +71,7 @@ def main():
             workspace_update(cfg)
 
     if args.command == 'compose':
-        call_compose(cfg, args.args, ['sudo'] if args.sudo else [])
+        compose_call(cfg, args.args, ['sudo'] if args.sudo else [])
 
     if args.command == 'volume':
         if args.command_volume == 'backup':
@@ -80,7 +81,7 @@ def main():
     if args.command in aliased_compose_cmds:
         cmd_args = list(aliased_compose_cmds[args.command])
         cmd_args.extend(args.args)
-        call_compose(cfg, cmd_args, ['sudo'] if args.sudo else [])
+        compose_call(cfg, cmd_args, ['sudo'] if args.sudo else [])
 
 
 if __name__ == '__main__':

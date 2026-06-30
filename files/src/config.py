@@ -1,5 +1,6 @@
 import os
 
+from .models import Config as ConfigModel
 from .utils import print_err, yaml_load
 
 
@@ -20,10 +21,7 @@ class Config:
     def __init__(self, root_dir, y_config):
         self.root_dir = root_dir
         self.user_dir = os.path.join(root_dir, 'user')
-        self.wc = {}
-        for k, v in y_config.items():
-            if k[:3] == 'wc_':
-                self.wc[k[3:]] = v
+        self.wc = ConfigModel.model_validate(y_config)
 
     def get_repo_dir(self, service_name, rel_start=None):
         path = os.path.join(self.root_dir, 'workspace', 'services', service_name, 'repo')

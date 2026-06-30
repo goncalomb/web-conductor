@@ -7,6 +7,7 @@
 #   "pytest-cov",
 #   "syrupy",
 #   "pyyaml",
+#   "pydantic",
 # ]
 # ///
 

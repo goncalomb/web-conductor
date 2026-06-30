@@ -1,136 +1,138 @@
 import os
 import re
 
+from .config import Config
 from .labels import HomepageConfig, TraefikConfigGroup, TraefikMiddleware, TraefikRouter, TraefikService
-from .utils import yaml_dump_print_changes, yaml_load
+from .models import ComposeFile as ComposeFileModel
+from .models import Route, XWebConductorService
+from .utils import call_process, yaml_dump_print_changes, yaml_load
 
 
 class ComposeFile():
-    def __init__(self, name, path, *, cfg):
+    def __init__(self, name, path, *, cfg: Config):
         self.name = name
         self.path = path
         self._cfg = cfg
-        self._y = yaml_load(path)
-        wc = self._y.get('x-web-conductor', {})
+        self._dat = ComposeFileModel.model_validate(yaml_load(path))
         # TODO: better group defaults (we should detect user files)
         # self._wc_group = wc.get('group', '.'.join(self.name.split('.')[1:-1]))
-        self._wc_group = wc.get('group', 'User Services')
+        self._wc_group = 'User Services'
+        if self._dat.x_web_conductor and self._dat.x_web_conductor.group:
+            self._wc_group = self._dat.x_web_conductor.group
 
-    def _create_traefik_labels(self, service_name, config):
-        base_name = service_name.replace('.', '-') + '-' + self._cfg.wc['compose_name']
+    def _create_traefik_labels(self, wcs: XWebConductorService):
+        base_name = wcs.service_name.replace('.', '-') + '-' + self._cfg.wc.compose_name
         tcg = TraefikConfigGroup()
 
-        def create_router(name_parts, config, *, entrypoint='https'):
+        def create_router(name_parts, route: Route, *, entrypoint='https'):
             name = '~'.join(name_parts)
             tr = tcg.add(TraefikRouter(name))
-            r_admin = config.get('admin', False)
 
             # entry point (https is set as default on traefik.toml)
             if entrypoint != 'https':
                 tr.set('entryPoints', entrypoint)
 
             # hardcoded service for traefik dashboard
-            if service_name == 'traefik' and r_admin:
+            if wcs.service_name == 'traefik' and route.admin:
                 tr.set('service', 'api@internal')
 
             # rule
             rule = []
-            if r_host := config.get('host', self._cfg.wc['traefik_admin_host'] if r_admin else None):
-                rule.append('Host(`%s`)' % (r_host))
-            if r_path := config.get('path', None):
-                if r_path == '/':
-                    rule.append('PathPrefix(`/`)')
-                else:
-                    rule.append('(Path(`%s`) || PathPrefix(`%s/`))' % (r_path, r_path))
+            if r_host := route.host or (self._cfg.wc.traefik_admin_host if route.admin else None):
+                rule.append(f'Host(`{r_host}`)')
+            if route.path == '/':
+                rule.append('PathPrefix(`/`)')
+            elif route.path:
+                rule.append(f'(Path(`{route.path}`) || PathPrefix(`{route.path}/`))')
             if rule:
                 tr.set('rule', ' && '.join(rule))
 
             # priority
-            if 'priority' in config:
-                tr.set('priority', config['priority'])
+            if route.priority:
+                tr.set('priority', route.priority)
 
             # middlewares
-            if config.get('internal', r_admin and self._cfg.wc['traefik_admin_use_internal']):
+            if route.internal is True or route.internal is None and route.admin and self._cfg.wc.traefik_admin_use_internal:
                 tr.set('middlewares', 'internal@file', append=True)
-            if config.get('auth', r_admin and self._cfg.wc['traefik_admin_use_auth']):
+            if route.auth is True or route.auth is None and route.admin and self._cfg.wc.traefik_admin_use_auth:
                 tr.set('middlewares', 'auth@file', append=True)
 
-            if location := config.get('location', None):
+            if route.location:
                 tm = tcg.add(TraefikMiddleware(name + '+location'))
                 tm.set('redirectregex.regex', '^.+$')
-                tm.set('redirectregex.replacement', location)
+                tm.set('redirectregex.replacement', route.location)
                 tr.set('middlewares', tm.name, append=True)
                 # hardcoded noop@internal service for limbo redirects
-                if service_name == 'limbo':
+                if wcs.service_name == 'limbo':
                     tr.set('service', 'noop@internal')
 
         # main service route
-        if route := config.get('route', None):
-            if 'port' in route:
+        if wcs.route:
+            if wcs.route.port:
                 ts = tcg.add(TraefikService(base_name))
-                ts.set('loadbalancer.server.port', route['port'])
-            create_router([base_name], route)
+                ts.set('loadbalancer.server.port', wcs.route.port)
+            create_router([base_name], wcs.route)
 
         # extra service routes
-        if routes := config.get('routes', None):
-            for key in routes:
-                create_router([base_name, key], routes[key])
+        if wcs.routes:
+            for name, route in wcs.routes.items():
+                # TODO: port
+                create_router([base_name, name], route)
 
         labels = list(tcg.to_labels())
         if labels:
             labels.insert(0, 'traefik.enable=true')
         return labels
 
-    def _create_homepage_labels(self, service_name, config):
+    def _create_homepage_labels(self, wcs: XWebConductorService):
         h = HomepageConfig()
-        if homepage := config.get('homepage', False):
+        if wcs.homepage:
             # set basic homepage config
             h.set('group', self._wc_group)
             h.set('icon', 'mdi-server-outline')
-            h.set('name', config.get('name', service_name + ' @ ' + self.name))
-            if 'description' in config:
-                h.set('description', config['description'])
+            h.set('name', wcs.name or wcs.service_name + ' @ ' + self.name)
+            if wcs.description:
+                h.set('description', wcs.description)
             # set href from route
-            if route := config.get('route', {}):
-                host = route.get('host', self._cfg.wc['traefik_admin_host'] if route.get('admin', False) else None)
-                if host:
-                    h.set('href', 'https://%s%s' % (host, route.get('path', '/')))
+            if wcs.route:
+                if host := wcs.route.host or (self._cfg.wc.traefik_admin_host if wcs.route.admin else None):
+                    h.set('href', f'https://{host}{wcs.route.path or "/"}')
             # set homepage extras
-            if isinstance(homepage, dict):
-                for k, v in homepage.items():
+            if isinstance(wcs.homepage, dict):
+                for k, v in wcs.homepage.items():
                     h.set(k, v)
         return list(h.to_labels())
 
     def _create_base_y(self):
         y = {
-            'x-base': self._cfg.wc['compose_service_base'],
+            'x-base': self._cfg.wc.compose_service_base,
             'services': {}
         }
-        for name, service in self._y.get('services', {}).items():
-            if 'x-web-conductor' in service:
+        for name, service in self._dat.services.items():
+            if service.x_web_conductor:
                 y['services'][name] = y['x-base']
         return y if y['services'] else None
 
     def _create_data_y(self):
         y = {
             'x-logging': {
-                'driver': self._cfg.wc['compose_logging_driver'],
-                'options': self._cfg.wc['compose_logging_options'],
+                'driver': self._cfg.wc.compose_logging_driver,
+                'options': self._cfg.wc.compose_logging_options,
             },
             'services': {}
         }
-        for name, service in self._y.get('services', {}).items():
-            if conductor := service.get('x-web-conductor', {}):
+        for name, service in self._dat.services.items():
+            if wcs := service.x_web_conductor:
                 data = y['services'][name] = {}
-                if 'repo' in conductor:
+                if wcs.repo:
                     data['build'] = {
                         'context': self._cfg.get_repo_dir(name, os.path.dirname(self.path)),
                     }
                 if name != 'loki':
                     data['depends_on'] = ['loki']
                 data['logging'] = y['x-logging']
-                data['labels'] = self._create_traefik_labels(name, conductor)
-                data['labels'] += self._create_homepage_labels(name, conductor)
+                data['labels'] = self._create_traefik_labels(wcs)
+                data['labels'] += self._create_homepage_labels(wcs)
         return y if y['services'] else None
 
     def create_merge_files(self, *, dir=None):
@@ -147,7 +149,7 @@ class ComposeFile():
 
 
 class ComposeFileGroup():
-    def __init__(self, name, paths, *, cfg):
+    def __init__(self, name, paths, *, cfg: Config):
         self.name = name
         self.files = [ComposeFile(name, path, cfg=cfg) for path in paths]
 
@@ -156,7 +158,7 @@ class ComposeFileGroup():
             yield from f.create_merge_files()
 
 
-def compose_files_find(cfg, *, user_only=False):
+def compose_files_find(cfg: Config, *, user_only=False):
     # files are grouped by name so that user files can extend root files
     re_compose = r'^compose\.\w+\.ya?ml$'
     files = {}
@@ -172,7 +174,7 @@ def compose_files_find(cfg, *, user_only=False):
     return files
 
 
-def compose_files_create(cfg):
+def compose_files_create(cfg: Config):
     all_groups = []
     for f, f_paths in compose_files_find(cfg).items():
         cg = ComposeFileGroup(f, f_paths, cfg=cfg)
@@ -182,6 +184,15 @@ def compose_files_create(cfg):
 
     # create final compose.yml file
     yaml_dump_print_changes(os.path.join(cfg.root_dir, 'compose.yml'), {
-        'name': cfg.wc['compose_name'],
+        'name': cfg.wc.compose_name,
         'include': [{'path': g} for g in all_groups]
     })
+
+
+def compose_call(cfg: Config, args: list[str], args_pre: list[str] = []):
+    return call_process(
+        args_pre + ['docker', 'compose'] + args,
+        env={
+            'BUILDX_NO_DEFAULT_ATTESTATIONS': '0' if cfg.wc.compose_default_attestations else '1',
+        }
+    )

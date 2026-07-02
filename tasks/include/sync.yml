@@ -3,6 +3,7 @@
     src: "{{ sync_args.src }}/"
     dest: "{{ sync_args.dest }}/"
     rsync_opts:
+      - --filter=':- .gitignore' # exclude files from .gitignore
       - --exclude=*.j2 # exclude templates
       - --omit-dir-times # files from other tasks will cause idempotency issues (changed mtime)
   when: sync_args.src is ansible.builtin.directory

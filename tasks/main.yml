@@ -17,17 +17,30 @@
     loop_var: sync_args
     label: "{{ sync_args.name }}"
 
+- name: Setup venv and install packages
+  ansible.builtin.pip:
+    virtualenv: "{{ wc_dir }}/.venv"
+    virtualenv_command: python3 -m venv
+    requirements: "{{ wc_dir }}/requirements.txt"
+    # XXX: possible ansible.builtin.pip bug...
+    # ansible.builtin.pip always reports changes when installing local packages
+    # using name, but with a 'requirements.txt' file it detects the changes
+    # correctly (same with vcs urls, using 'pip list')
+    # https://github.com/ansible/ansible/blob/devel/lib/ansible/modules/pip.py
+    # name: "{{ wc_dir }}"
+    # editable: true
+
 - name: Create configuration files
   ansible.builtin.command:
     chdir: "{{ wc_dir }}"
-    argv: ['./web-conductor.py', 'run', 'config']
+    argv: ['./.venv/bin/web-conductor', 'run', 'config']
   register: shell_result
   changed_when: shell_result.stdout | length > 0
 
 - name: Update workspace files
   ansible.builtin.command:
     chdir: "{{ wc_dir }}"
-    argv: ['./web-conductor.py', 'run', 'update']
+    argv: ['./.venv/bin/web-conductor', 'run', 'update']
   register: shell_result
   changed_when: shell_result.stdout | length > 0
 

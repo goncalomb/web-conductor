@@ -1,0 +1,9 @@
+services:
+  todo-list-app:
+    x-web-conductor:
+      repo:
+        url: https://github.com/dockersamples/todo-list-app.git
+        mtime: False
+      route:
+        host: todo.localhost
+      homepage: true

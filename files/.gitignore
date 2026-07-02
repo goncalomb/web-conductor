@@ -1,15 +1,17 @@
-__pycache__
+__pycache__/
+build/
+*.egg-info/
+.venv/
+
+.pytest_cache/
+.coverage
+htmlcov/
 
 /workspace
 /backups
 /user
 /log
 
-/compose.*.yaml
-/compose.*.yml
-/compose.yaml
+/compose.*.base.yml
+/compose.*.data.yml
 /compose.yml
-!/compose.vpn.yml
-!/compose.home.yml
-!/compose.proxy.yml
-!/compose.telemetry.yml

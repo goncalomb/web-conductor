@@ -1,29 +1,19 @@
-#!/usr/bin/env -S pipx run --path
-
-# /// script
-# requires-python = ">=3.12"
-# dependencies = [
-#   "pyyaml",
-#   "pydantic",
-# ]
-# ///
-
 import argparse
 import os
 
-from src.compose import compose_call, compose_files_create
-from src.config import Config
-from src.utils import FatalError
-from src.volume import volume_backup
-from src.workspace import workspace_update
-
-# TODO: consider using relative paths for compose files
-root_dir = os.path.realpath(os.path.dirname(__file__))
-
-os.chdir(root_dir)
+from .compose import compose_call, compose_files_create
+from .config import Config
+from .utils import FatalError, venv_find_dir
+from .volume import volume_backup
+from .workspace import workspace_update
 
 
 def main():
+    venv_dir = venv_find_dir()
+    root_dir = os.path.dirname(venv_dir) if venv_dir else os.getcwd()
+
+    os.chdir(root_dir)
+
     parser = argparse.ArgumentParser(prog='web-conductor')
     parser.add_argument('--sudo', action='store_true', help='use sudo for calling docker-compose')
 

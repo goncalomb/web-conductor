@@ -2,8 +2,8 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from src.compose import ComposeFileGroup
-from src.config import Config
+from web_conductor.compose import ComposeFileGroup
+from web_conductor.config import Config
 
 TESTS_DIR = Path(__file__).parent
 FIXTURES_DIR = TESTS_DIR / 'fixtures'

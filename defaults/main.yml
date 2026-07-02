@@ -17,6 +17,9 @@ wc_include_setup: true
 # whether to setup docker (on setup.yml), requires geerlingguy.docker role
 wc_setup_docker: true
 
+# whether to setup user .profile, adds .venv/bin to PATH and cd to wc_dir
+wc_setup_user_profile: true
+
 # docker compose ansible options (community.docker.docker_compose_v2)
 wc_compose_state: present
 wc_compose_build: always

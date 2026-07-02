@@ -30,6 +30,15 @@
     # name: "{{ wc_dir }}"
     # editable: true
 
+- name: Setup user profile
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_facts.user_dir }}/.profile"
+    marker: "# {mark} ANSIBLE goncalomb/web-conductor"
+    block: |
+      export PATH="{{ wc_dir }}/.venv/bin:$PATH"
+      cd "{{ wc_dir }}"
+  when: wc_setup_user_profile
+
 - name: Create configuration files
   ansible.builtin.command:
     chdir: "{{ wc_dir }}"

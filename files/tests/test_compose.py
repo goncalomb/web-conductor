@@ -4,26 +4,23 @@ from web_conductor.compose import compose_merge
 from web_conductor.utils import yaml_dump
 
 
-def test_files(wc_config, wc_compose_group, snapshot):
-    """test each file layer independently, and the original file"""
-    for i, cf in enumerate(wc_compose_group.files):
+def test_files(wc_config, wc_compose_collection, snapshot):
+    """test the compose file layers and the final merged result"""
+    for g in wc_compose_collection.groups:
+        merged_yml = {}
         # generated layers
-        for name, data in cf.create_layers(wc_config, os.path.dirname(cf.path)):
-            assert yaml_dump(data) == snapshot(name=f'{i}_{name}')
-        # original file
-        assert yaml_dump(cf.yml) == snapshot(name=f'{i}_{os.path.basename(cf.path)}')
+        for name, yml in g.create_layers(wc_config, os.path.dirname(g.files[0].path)):
+            assert yaml_dump(yml) == snapshot(name=name)
+            merged_yml = compose_merge(merged_yml, yml)
+        # original files
+        for i, f in enumerate(g.files):
+            assert yaml_dump(f.yml) == snapshot(name=f'{os.path.basename(f.path)}.{i}')
+            merged_yml = compose_merge(merged_yml, f.yml)
+        # merged result, this approximates the final config that would be
+        # created by docker compose (i.e. 'docker compose config')
+        assert yaml_dump(merged_yml) == snapshot(name=f'{g.name}_merged.yml')
 
 
-def test_merged(wc_config, wc_compose_group, snapshot):
-    """test the merged result of all compose files in the group"""
-    merged_yml = {}
-    for _, yml in wc_compose_group.create_layers(wc_config, os.path.dirname(wc_compose_group.files[0].path)):
-        merged_yml = compose_merge(merged_yml, yml)
-    for f in wc_compose_group.files:
-        merged_yml = compose_merge(merged_yml, f.yml)
-    assert yaml_dump(merged_yml) == snapshot(name='merged.yml')
-
-
-def test_wc_services(wc_compose_group, snapshot):
+def test_wc_services(wc_compose_collection, snapshot):
     """test the result of get_wc_services"""
-    assert list(wc_compose_group.get_wc_services()) == snapshot()
+    assert list(wc_compose_collection.get_wc_services()) == snapshot()

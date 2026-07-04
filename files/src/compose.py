@@ -8,20 +8,40 @@ from .models import Route, XWebConductorService
 from .utils import call_process, yaml_dump_print_changes, yaml_load
 
 
-class ComposeFile():
-    def __init__(self, name, path, *, cfg: Config):
-        self.name = name
-        self.path = path
-        self._cfg = cfg
-        self._dat = ComposeFileModel.model_validate(yaml_load(path))
-        # TODO: better group defaults (we should detect user files)
-        # self._wc_group = wc.get('group', '.'.join(self.name.split('.')[1:-1]))
-        self._wc_group = 'User Services'
-        if self._dat.x_web_conductor and self._dat.x_web_conductor.group:
-            self._wc_group = self._dat.x_web_conductor.group
+def compose_merge(a, b, *, root_x_on_top=True):
+    """
+    Merge two compose files. This is a normal recursive merge (dicts are merged,
+    lists are appended), it does not follow the Docker Compose merge exceptions.
+    https://docs.docker.com/reference/compose-file/merge/
+    This is only effectively used to merge our x-web-conductor keys in memory,
+    the output is not used to generate the final compose.yml file.
+    Keys starting with x- on root are moved to the top so that our x- anchors
+    look nice for testing (i.e the anchors appear at the top, before the alias).
+    """
+    if isinstance(a, dict) and isinstance(b, dict):
+        a = a.copy()
+        for k, v in b.items():
+            a[k] = compose_merge(a.get(k), v, root_x_on_top=False)
+        if root_x_on_top:
+            x = {}
+            r = {}
+            for k, v in a.items():
+                (x if k.startswith('x-') else r)[k] = v
+            a = {**x, **r}
+        return a
+    elif isinstance(a, list) and isinstance(b, list):
+        return a + b
+    return b
 
-    def _create_traefik_labels(self, wcs: XWebConductorService):
-        base_name = wcs.service_name.replace('.', '-') + '-' + self._cfg.wc.compose_name
+
+class ComposeFileBase():
+    def __init__(self, name: str, yml):
+        self.name = name
+        self.yml = yml
+        self.dat = ComposeFileModel.model_validate(self.yml)
+
+    def _create_traefik_labels(self, cfg: Config, wcs: XWebConductorService):
+        base_name = wcs.service_name.replace('.', '-') + '-' + cfg.wc.compose_name
         tcg = TraefikConfigGroup()
 
         def create_router(name_parts, route: Route, *, entrypoint='https'):
@@ -38,7 +58,7 @@ class ComposeFile():
 
             # rule
             rule = []
-            if r_host := route.host or (self._cfg.wc.traefik_admin_host if route.admin else None):
+            if r_host := route.host or (cfg.wc.traefik_admin_host if route.admin else None):
                 rule.append(f'Host(`{r_host}`)')
             if route.path == '/':
                 rule.append('PathPrefix(`/`)')
@@ -52,9 +72,9 @@ class ComposeFile():
                 tr.set('priority', route.priority)
 
             # middlewares
-            if route.internal is True or route.internal is None and route.admin and self._cfg.wc.traefik_admin_use_internal:
+            if route.internal is True or route.internal is None and route.admin and cfg.wc.traefik_admin_use_internal:
                 tr.set('middlewares', 'internal@file', append=True)
-            if route.auth is True or route.auth is None and route.admin and self._cfg.wc.traefik_admin_use_auth:
+            if route.auth is True or route.auth is None and route.admin and cfg.wc.traefik_admin_use_auth:
                 tr.set('middlewares', 'auth@file', append=True)
 
             if route.location:
@@ -84,18 +104,18 @@ class ComposeFile():
             labels.insert(0, 'traefik.enable=true')
         return labels
 
-    def _create_homepage_labels(self, wcs: XWebConductorService):
+    def _create_homepage_labels(self, cfg: Config, wcs: XWebConductorService):
         h = HomepageConfig()
         if wcs.homepage:
             # set basic homepage config
-            h.set('group', self._wc_group)
+            h.set('group', self.dat.x_web_conductor.group)
             h.set('icon', 'mdi-server-outline')
             h.set('name', wcs.name or wcs.service_name + ' @ ' + self.name)
             if wcs.description:
                 h.set('description', wcs.description)
             # set href from route
             if wcs.route:
-                if host := wcs.route.host or (self._cfg.wc.traefik_admin_host if wcs.route.admin else None):
+                if host := wcs.route.host or (cfg.wc.traefik_admin_host if wcs.route.admin else None):
                     h.set('href', f'https://{host}{wcs.route.path or "/"}')
             # set homepage extras
             if isinstance(wcs.homepage, dict):
@@ -103,59 +123,100 @@ class ComposeFile():
                     h.set(k, v)
         return list(h.to_labels())
 
-    def _create_base_y(self):
+    def _create_base_y(self, cfg: Config, rel_to: str):
         y = {
-            'x-base': self._cfg.wc.compose_service_base,
+            'x-base': cfg.wc.compose_service_base,
             'services': {}
         }
-        for name, service in self._dat.services.items():
+        for name, service in self.dat.services.items():
             if service.x_web_conductor:
                 y['services'][name] = y['x-base']
         return y if y['services'] else None
 
-    def _create_data_y(self):
+    def _create_data_y(self, cfg: Config, rel_to: str):
         y = {
             'x-logging': {
-                'driver': self._cfg.wc.compose_logging_driver,
-                'options': self._cfg.wc.compose_logging_options,
+                'driver': cfg.wc.compose_logging_driver,
+                'options': cfg.wc.compose_logging_options,
             },
             'services': {}
         }
-        for name, service in self._dat.services.items():
+        for name, service in self.dat.services.items():
             if wcs := service.x_web_conductor:
                 data = y['services'][name] = {}
                 if wcs.repo:
                     data['build'] = {
-                        'context': self._cfg.get_repo_dir(name, os.path.dirname(self.path)),
+                        'context': cfg.get_repo_dir(name, rel_to),
                     }
                 if name != 'loki':
                     data['depends_on'] = ['loki']
                 data['logging'] = y['x-logging']
-                data['labels'] = self._create_traefik_labels(wcs)
-                data['labels'] += self._create_homepage_labels(wcs)
+                data['labels'] = self._create_traefik_labels(cfg, wcs)
+                data['labels'] += self._create_homepage_labels(cfg, wcs)
         return y if y['services'] else None
 
-    def create_merge_files(self, *, dir=None):
+    def create_layers(self, cfg: Config, rel_to: str):
         f_name, f_ext = os.path.splitext(self.name)
-        for name, y in [
-            ('base', self._create_base_y()),
-            ('data', self._create_data_y()),
+        for name, yml in [
+            ('base', self._create_base_y(cfg, rel_to)),
+            ('data', self._create_data_y(cfg, rel_to)),
         ]:
-            if y:
-                f_path = os.path.join(dir or os.path.dirname(self.path), f_name + '.' + name + f_ext)
-                yaml_dump_print_changes(f_path, y)
-                yield f_path
-        yield self.path
+            if yml:
+                yield f_name + '.' + name + f_ext, yml
+
+
+class ComposeFile(ComposeFileBase):
+    def __init__(self, name: str, path: str):
+        super().__init__(name, yaml_load(path))
+        self.path = path
 
 
 class ComposeFileGroup():
-    def __init__(self, name, paths, *, cfg: Config):
+    def __init__(self, name: str, paths: list[str]):
         self.name = name
-        self.files = [ComposeFile(name, path, cfg=cfg) for path in paths]
-
-    def create_merge_files(self):
+        self.files = [ComposeFile(name, path) for path in paths]
+        merged_yml = {}
         for f in self.files:
-            yield from f.create_merge_files()
+            merged_yml = compose_merge(merged_yml, f.yml)
+        self.merged = ComposeFileBase(name, merged_yml)
+
+    def get_wc_services(self):
+        for service in self.merged.dat.services.values():
+            if service.x_web_conductor:
+                yield service.x_web_conductor
+
+    def create_layers(self, cfg: Config, rel_to: str):
+        yield from self.merged.create_layers(cfg, rel_to)
+
+
+class ComposeFileCollection():
+    def __init__(self, files: dict[str, list[str]]):
+        self.groups = [ComposeFileGroup(name, paths) for name, paths in files.items()]
+
+    def get_wc_services(self):
+        for g in self.groups:
+            yield from g.get_wc_services()
+
+    def write_result_files(self, cfg: Config):
+        def create_layers(g: ComposeFileGroup):
+            layers_dir = os.path.dirname(g.files[0].path)
+            for name, yml in g.create_layers(cfg, layers_dir):
+                f_path = os.path.join(layers_dir, name)
+                yaml_dump_print_changes(yml, f_path)
+                yield f_path
+            for f in g.files:
+                yield f.path
+
+        def create_groups(c: ComposeFileCollection):
+            for g in c.groups:
+                if paths := list(create_layers(g)):
+                    yield paths
+
+        # create final compose.yml file
+        yaml_dump_print_changes({
+            'name': cfg.wc.compose_name,
+            'include': [{'path': p} for p in create_groups(self)]
+        }, os.path.join(cfg.root_dir, 'compose.yml'))
 
 
 def compose_files_find(cfg: Config, *, user_only=False):
@@ -171,22 +232,11 @@ def compose_files_find(cfg: Config, *, user_only=False):
                     files[f].append(os.path.join(d, f))
                 else:
                     files[f] = [os.path.join(d, f)]
-    return files
+    return ComposeFileCollection(files)
 
 
 def compose_files_create(cfg: Config):
-    all_groups = []
-    for f, f_paths in compose_files_find(cfg).items():
-        cg = ComposeFileGroup(f, f_paths, cfg=cfg)
-        f_group = list(cg.create_merge_files())
-        if f_group:
-            all_groups.append(f_group)
-
-    # create final compose.yml file
-    yaml_dump_print_changes(os.path.join(cfg.root_dir, 'compose.yml'), {
-        'name': cfg.wc.compose_name,
-        'include': [{'path': g} for g in all_groups]
-    })
+    compose_files_find(cfg).write_result_files(cfg)
 
 
 def compose_call(cfg: Config, args: list[str], args_pre: list[str] = []):

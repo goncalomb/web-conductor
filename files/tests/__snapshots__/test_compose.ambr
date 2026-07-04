@@ -120,6 +120,7 @@
           duck:
             host: duck.localhost
             location: https://duckduckgo.com/
+        homepage: false
   
   '''
 # ---
@@ -162,10 +163,127 @@
       x-web-conductor:
         repo:
           url: https://github.com/dockersamples/todo-list-app.git
-          mtime: False
+          mtime: false
         route:
           host: todo.localhost
         homepage: true
   
   '''
+# ---
+# name: test_merged[compose.proxy.yml][merged.yml]
+  '''
+  x-base:
+    restart: unless-stopped
+  x-logging: &id001
+    driver: wc-test-driver
+    options:
+      mode: non-blocking
+  x-web-conductor:
+    group: Core Test
+  services:
+    traefik:
+      restart: unless-stopped
+      depends_on:
+      - loki
+      logging: *id001
+      labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik-wc-test.service=api@internal
+      - traefik.http.routers.traefik-wc-test.rule=Host(`wc.localhost`) && (Path(`/traefik`)
+        || PathPrefix(`/traefik/`))
+      - traefik.http.routers.traefik-wc-test.middlewares=internal@file,auth@file
+      - homepage.group=Core Test
+      - homepage.icon=traefik.png
+      - homepage.name=Traefik
+      - homepage.description=Traefik 123
+      - homepage.href=https://wc.localhost/traefik
+      x-web-conductor:
+        name: Traefik
+        description: Traefik 123
+        route:
+          path: /traefik
+          admin: true
+        homepage:
+          icon: traefik.png
+    limbo:
+      restart: unless-stopped
+      depends_on:
+      - loki
+      logging: *id001
+      labels:
+      - traefik.enable=true
+      - traefik.http.services.limbo-wc-test.loadbalancer.server.port=80
+      - traefik.http.routers.limbo-wc-test.rule=PathPrefix(`/`)
+      - traefik.http.routers.limbo-wc-test.priority=1
+      - traefik.http.routers.limbo-wc-test~test.rule=Host(`test.localhost`)
+      - traefik.http.routers.limbo-wc-test~test.middlewares=limbo-wc-test~test+location
+      - traefik.http.routers.limbo-wc-test~test.service=noop@internal
+      - traefik.http.middlewares.limbo-wc-test~test+location.redirectregex.regex=^.+$
+      - traefik.http.middlewares.limbo-wc-test~test+location.redirectregex.replacement=https://example.com/
+      - traefik.http.routers.limbo-wc-test~duck.rule=Host(`duck.localhost`)
+      - traefik.http.routers.limbo-wc-test~duck.middlewares=limbo-wc-test~duck+location
+      - traefik.http.routers.limbo-wc-test~duck.service=noop@internal
+      - traefik.http.middlewares.limbo-wc-test~duck+location.redirectregex.regex=^.+$
+      - traefik.http.middlewares.limbo-wc-test~duck+location.redirectregex.replacement=https://duckduckgo.com/
+      x-web-conductor:
+        name: Limbo
+        description: Limbo 123
+        route:
+          path: /
+          port: 80
+          priority: 1
+        homepage: false
+        routes:
+          test:
+            host: test.localhost
+            location: https://example.com/
+          duck:
+            host: duck.localhost
+            location: https://duckduckgo.com/
+  
+  '''
+# ---
+# name: test_merged[compose.user.yml][merged.yml]
+  '''
+  x-base:
+    restart: unless-stopped
+  x-logging: &id001
+    driver: wc-test-driver
+    options:
+      mode: non-blocking
+  services:
+    todo-list-app:
+      restart: unless-stopped
+      build:
+        context: ../workspace/services/todo-list-app/repo
+      depends_on:
+      - loki
+      logging: *id001
+      labels:
+      - traefik.enable=true
+      - traefik.http.routers.todo-list-app-wc-test.rule=Host(`todo.localhost`)
+      - homepage.group=User Services
+      - homepage.icon=mdi-server-outline
+      - homepage.name=todo-list-app @ compose.user.yml
+      - homepage.href=https://todo.localhost/
+      x-web-conductor:
+        repo:
+          url: https://github.com/dockersamples/todo-list-app.git
+          mtime: false
+        route:
+          host: todo.localhost
+        homepage: true
+  
+  '''
+# ---
+# name: test_wc_services[compose.proxy.yml]
+  list([
+    XWebConductorService(name='Traefik', description='Traefik 123', repo=None, route=Route(port=None, host=None, path='/traefik', admin=True, internal=None, auth=None, location=None, priority=None), routes=None, homepage={'icon': 'traefik.png'}),
+    XWebConductorService(name='Limbo', description='Limbo 123', repo=None, route=Route(port=80, host=None, path='/', admin=False, internal=None, auth=None, location=None, priority=1), routes={'test': Route(port=None, host='test.localhost', path=None, admin=False, internal=None, auth=None, location='https://example.com/', priority=None), 'duck': Route(port=None, host='duck.localhost', path=None, admin=False, internal=None, auth=None, location='https://duckduckgo.com/', priority=None)}, homepage=False),
+  ])
+# ---
+# name: test_wc_services[compose.user.yml]
+  list([
+    XWebConductorService(name=None, description=None, repo=Repo(url='https://github.com/dockersamples/todo-list-app.git', mtime=False), route=Route(port=None, host='todo.localhost', path=None, admin=False, internal=None, auth=None, location=None, priority=None), routes=None, homepage=True),
+  ])
 # ---

@@ -8,3 +8,4 @@ services:
         duck:
           host: duck.localhost
           location: https://duckduckgo.com/
+      homepage: false # testing override

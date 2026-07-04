@@ -18,7 +18,7 @@ class Config(BaseModel):
 
 
 class XWebConductorRoot(BaseModel):
-    group: Optional[str] = None
+    group: Optional[str] = 'User Services'
 
 
 class Repo(BaseModel):
@@ -38,7 +38,7 @@ class Route(BaseModel):
 
 
 class XWebConductorService(BaseModel):
-    _service_name: 'ComposeService' = PrivateAttr('')
+    _service_name: str = PrivateAttr('')
     name: Optional[str] = None
     description: Optional[str] = None
     repo: Optional[Repo] = None
@@ -61,14 +61,13 @@ class ComposeService(BaseModel):
 
 
 class ComposeFile(BaseModel):
-    x_web_conductor: Optional[XWebConductorRoot] = Field(None, alias='x-web-conductor')
+    x_web_conductor: XWebConductorRoot = Field(default_factory=XWebConductorRoot, alias='x-web-conductor')
     services: dict[str, ComposeService] = Field(default_factory=dict)
 
     @model_validator(mode='after')
     def set_service_names(self) -> 'ComposeFile':
-        if services := self.services:
-            for name, service in services.items():
-                service._name = name
-                if service.x_web_conductor:
-                    service.x_web_conductor._service_name = name
+        for name, service in self.services.items():
+            service._name = name
+            if service.x_web_conductor:
+                service.x_web_conductor._service_name = name
         return self

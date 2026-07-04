@@ -2,6 +2,7 @@ import os
 import signal
 import subprocess
 import sys
+from typing import overload
 
 import yaml
 
@@ -36,9 +37,22 @@ def yaml_load(file):
         return yaml.safe_load(fp)
 
 
-def yaml_dump(file, data, check_changes=False):
-    if check_changes and os.path.isfile(file):
-        data_y = yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+@overload
+def yaml_dump(data, file: None = None) -> str: ...
+@overload
+def yaml_dump(data, file: str) -> None: ...
+
+
+def yaml_dump(data, file: str | None = None):
+    if file is None:
+        return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+    with open(file, 'w') as fp:
+        return yaml.safe_dump(data, fp, default_flow_style=False, sort_keys=False)
+
+
+def yaml_dump_check_changes(data, file: str):
+    if os.path.isfile(file):
+        data_y = yaml_dump(data)
         with open(file, 'r+') as fp:
             data_f = fp.read()
             if data_y == data_f:
@@ -47,13 +61,12 @@ def yaml_dump(file, data, check_changes=False):
             fp.truncate()
             fp.write(data_y)
         return True
-    with open(file, 'w') as fp:
-        yaml.safe_dump(data, fp, default_flow_style=False, sort_keys=False)
+    yaml_dump(data, file)
     return True
 
 
-def yaml_dump_print_changes(file, data):
-    if yaml_dump(file, data, True):
+def yaml_dump_print_changes(data, file: str):
+    if yaml_dump_check_changes(data, file):
         print(file)
 
 

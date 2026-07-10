@@ -20,6 +20,14 @@ wc_setup_docker: true
 # whether to setup user .profile, adds .venv/bin to PATH and cd to wc_dir
 wc_setup_user_profile: true
 
+# extra pip requirements, core packages, avoid changing)
+wc_pip_core_requirements:
+  - certbot~=5.6
+
+# extra pip requirements, user packages (e.g. certbot plugins)
+wc_pip_user_requirements: []
+  # - certbot-dns-ovh
+
 # docker compose ansible options (community.docker.docker_compose_v2)
 wc_compose_state: present
 wc_compose_build: always
@@ -48,6 +56,26 @@ wc_compose_logging_options:
 # cause idempotency issues when wc_compose_build is set to 'always', the images
 # will differ every time and the containers will be recreated
 wc_compose_default_attestations: false
+
+# whether to generate wildcard certificates when multiple subdomains are found
+# for a given domain (all certificates are grouped by the base domain)
+wc_certs_generate_wildcards: true
+
+# TODO: extra domains
+
+# certbot email address for Let's Encrypt account registration
+wc_certbot_email: admin@localhost
+
+# certbot staging mode, set to false to generate the final certificates
+wc_certbot_staging: true
+
+# extra arguments for 'certbot certonly', this should be used to setup the DNS
+# challenge plugins (use wc_pip_user_requirements to install the plugins)
+wc_certbot_extra_args: []
+  # - --verbose
+  # - --dns-ovh
+  # - --dns-ovh-credentials={{ wc_dir }}/user/secrets/ovh.ini
+  # - --dns-ovh-propagation-seconds=20
 
 # host for admin routes (e.g. dashboard, metrics, etc.)
 wc_traefik_admin_host: "{{ wc_compose_name }}.localhost"

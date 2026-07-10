@@ -1,1 +1,4 @@
 -e "{{ wc_dir }}"
+{% for requirement in wc_pip_core_requirements + wc_pip_user_requirements %}
+{{ requirement }}
+{% endfor %}

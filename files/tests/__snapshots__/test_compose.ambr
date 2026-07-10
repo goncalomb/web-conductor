@@ -247,6 +247,14 @@
   
   '''
 # ---
+# name: test_wc_hosts
+  list([
+    'wc.localhost',
+    'test.localhost',
+    'duck.localhost',
+    'todo.localhost',
+  ])
+# ---
 # name: test_wc_services
   list([
     XWebConductorService(name='Traefik', description='Traefik 123', repo=None, route=Route(port=None, host=None, path='/traefik', admin=True, internal=None, auth=None, location=None, priority=None), routes=None, homepage={'icon': 'traefik.png'}),

@@ -5,6 +5,11 @@ wc_compose_logging_driver: wc-test-driver
 wc_compose_logging_options:
   mode: non-blocking
 wc_compose_default_attestations: false
+wc_certs_generate_wildcards: true
+wc_certbot_email: admin@localhost
+wc_certbot_staging: true
+wc_certbot_extra_args:
+  - --verbose
 wc_traefik_admin_host: wc.localhost
 wc_traefik_admin_use_internal: true
 wc_traefik_admin_use_auth: true

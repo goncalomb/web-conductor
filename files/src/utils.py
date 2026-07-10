@@ -81,3 +81,10 @@ def call_process(*args, **kwargs):
     finally:
         signal.signal(signal.SIGTERM, prev_term)
         signal.signal(signal.SIGINT, prev_int)
+
+
+def call_process_sudo(cmd_args, *args, **kwargs):
+    return call_process(
+        ['sudo', '--preserve-env=PATH', 'env', '--', *cmd_args],
+        *args, **kwargs,
+    )

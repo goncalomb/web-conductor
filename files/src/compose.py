@@ -197,6 +197,19 @@ class ComposeFileCollection():
         for g in self.groups:
             yield from g.get_wc_services()
 
+    def get_wc_routes(self):
+        for config in self.get_wc_services():
+            if config.route:
+                yield config.route
+            if config.routes:
+                for route in config.routes.values():
+                    yield route
+
+    def get_wc_hosts(self, cfg: Config):
+        for route in self.get_wc_routes():
+            if host := route.host or (cfg.wc.traefik_admin_host if route.admin else None):
+                yield host
+
     def write_result_files(self, cfg: Config):
         def create_layers(g: ComposeFileGroup):
             layers_dir = os.path.dirname(g.files[0].path)

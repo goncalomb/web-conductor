@@ -12,6 +12,10 @@ class Config(BaseModel):
     compose_logging_driver: str
     compose_logging_options: dict[str, Any]
     compose_default_attestations: bool
+    certs_generate_wildcards: bool
+    certbot_email: str
+    certbot_staging: bool
+    certbot_extra_args: list[str]
     traefik_admin_host: str
     traefik_admin_use_internal: bool
     traefik_admin_use_auth: bool

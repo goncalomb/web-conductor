@@ -24,3 +24,8 @@ def test_files(wc_config, wc_compose_collection, snapshot):
 def test_wc_services(wc_compose_collection, snapshot):
     """test the result of get_wc_services"""
     assert list(wc_compose_collection.get_wc_services()) == snapshot()
+
+
+def test_wc_hosts(wc_config, wc_compose_collection, snapshot):
+    """test the result of get_wc_hosts"""
+    assert list(wc_compose_collection.get_wc_hosts(wc_config)) == snapshot()

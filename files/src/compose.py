@@ -259,3 +259,7 @@ def compose_call(cfg: Config, args: list[str], args_pre: list[str] = []):
             'BUILDX_NO_DEFAULT_ATTESTATIONS': '0' if cfg.wc.compose_default_attestations else '1',
         }
     )
+
+
+def compose_traefik_reload_certificates(cfg: Config):
+    return compose_call(cfg, ['--progress', 'quiet', 'kill', '-s', 'SIGUSR2', 'traefik'])

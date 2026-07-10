@@ -2,7 +2,7 @@ import argparse
 import os
 
 from .certs import certbot_cert_exists, certbot_certificates, certbot_certonly, certbot_renew, certs_list_domains
-from .compose import compose_call, compose_files_create, compose_files_find
+from .compose import compose_call, compose_files_create, compose_files_find, compose_traefik_reload_certificates
 from .config import Config
 from .utils import FatalError, venv_find_dir
 from .volume import volume_backup
@@ -32,6 +32,7 @@ def main():
     parser_certs_sub.add_parser('run', description='obtain certificates')
     parser_certs_sub.add_parser('list', description='list certificates')
     parser_certs_sub.add_parser('renew', description='renew certificates')
+    parser_certs_sub.add_parser('reload', description='reload certificates (traefik)')
 
     parser_compose = subparsers.add_parser('compose', description='call docker-compose')
     parser_compose.add_argument('args', nargs='*', help='arguments to pass to docker-compose')
@@ -70,9 +71,8 @@ def main():
 
     if args.command == 'certs':
         cfc = compose_files_find(cfg)
-        all_domains = certs_list_domains(cfg, cfc)
         if args.command_certs == 'run':
-            for name, domains in all_domains:
+            for name, domains in certs_list_domains(cfg, cfc):
                 print(f"Obtaining certificate {name}...")
                 print(f"  Domains: {', '.join(domains)}")
                 ret = certbot_certonly(
@@ -84,13 +84,11 @@ def main():
                 if ret != 0:
                     print(f"Failed to obtain certificate {name}!")
                     exit(1)
-            if all_domains:
-                # TODO: properly reload traefik
-                print("Restarting traefik...")
-                compose_call(cfg, ['restart', 'traefik'])
+            print("Reloading traefik certificates...")
+            compose_traefik_reload_certificates(cfg)
 
         if args.command_certs == 'list':
-            for name, domains in all_domains:
+            for name, domains in certs_list_domains(cfg, cfc):
                 print(f"{name}:")
                 print(f"  Domains: {', '.join(domains)}")
                 print(f"  Certificate: {'OK' if certbot_cert_exists(name) else 'NOT FOUND'}")
@@ -102,10 +100,12 @@ def main():
             if ret != 0:
                 print("Failed to renew certificates!")
                 exit(1)
-            if all_domains:
-                # TODO: properly reload traefik
-                print("Restarting traefik...")
-                compose_call(cfg, ['restart', 'traefik'])
+            print("Reloading traefik certificates...")
+            compose_traefik_reload_certificates(cfg)
+
+        if args.command_certs == 'reload':
+            print("Reloading traefik certificates...")
+            compose_traefik_reload_certificates(cfg)
 
     if args.command == 'compose':
         compose_call(cfg, args.args, ['sudo'] if args.sudo else [])

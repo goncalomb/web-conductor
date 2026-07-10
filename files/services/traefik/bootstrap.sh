@@ -4,20 +4,15 @@ set -e
 
 echo "bootstrap: hi"
 
-SIG=
-signal() {
-    echo "bootstrap: received signal"
-    SIG=1
-}
-trap signal INT TERM
-
-# find Let's Encrypt certs on the volume
-
 LETSENCRYPT_DIR=/etc/letsencrypt/live
 CONF_FILE=/etc/traefik/dynamic/certificates.toml
-: >"$CONF_FILE"
-if [ -d "$LETSENCRYPT_DIR" ]; then
-    echo "bootstrap: searching '/etc/letsencrypt/live' for tls certificates"
+search_certificates() {
+    : >"$CONF_FILE"
+    if [ ! -d "$LETSENCRYPT_DIR" ]; then
+        echo "bootstrap: '$LETSENCRYPT_DIR' not found, skipping certificate search"
+        return
+    fi
+    echo "bootstrap: searching '$LETSENCRYPT_DIR' for tls certificates"
     for FOLDER in "$LETSENCRYPT_DIR"/*; do
         [ -d "$FOLDER" ] || continue
         CERT_FILE="$FOLDER/fullchain.pem"
@@ -33,9 +28,32 @@ if [ -d "$LETSENCRYPT_DIR" ]; then
             echo "bootstrap: missing files in '$FOLDER', skipping"
         fi
     done
-else
-    echo "bootstrap: '/etc/letsencrypt/live' not found, skipping certificate search"
-fi
+}
+
+TRAEFIK_PID=
+signal_usr1() {
+    echo "bootstrap: received USR1, sending to traefik"
+    [ -n "$TRAEFIK_PID" ] && kill -USR1 "$TRAEFIK_PID"
+}
+
+signal_usr2() {
+    echo "bootstrap: received USR2, reloading certificates"
+    search_certificates
+}
+
+KILL=
+signal_kill() {
+    echo "bootstrap: received kill signal"
+    KILL=1
+}
+
+trap signal_usr1 USR1
+trap signal_usr2 USR2
+trap signal_kill INT TERM
+
+# initial certificate search
+
+search_certificates
 
 # in addition to traefik, we need syslogd and crond for log rotation
 # start everything as background jobs and wait for any to finish
@@ -45,11 +63,12 @@ echo "bootstrap: starting traefik"
 syslogd -n &
 crond -f &
 /entrypoint.sh "$@" & # traefik
+TRAEFIK_PID=$!
 
 # 'wait -n' not available in sh
 # check if any jobs ended (!= 3), kill remaining jobs, wait and exit
 
-while jobs > /dev/null && [ "$SIG" == "" ]; do # calling jobs (without -p) appears to be necessary to update the jobs
+while jobs > /dev/null && [ -z "$KILL" ]; do # calling jobs (without -p) appears to be necessary to update the jobs
     JOBS=$(jobs -p)
     [ "$(echo "$JOBS" | wc -w)" == "3" ] || break
     sleep 1

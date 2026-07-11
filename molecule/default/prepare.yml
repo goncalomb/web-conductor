@@ -8,10 +8,11 @@
       ansible.builtin.apt:
         update_cache: true
 
-    # required for community.docker.docker_plugin
-    - name: Install python3-requests
+    - name: Install dependencies
       ansible.builtin.apt:
-        name: python3-requests
+        name:
+          - cron # for ansible.builtin.cron
+          - python3-requests # for community.docker.docker_plugin
         cache_valid_time: 3600
 
     - name: Include setup tasks

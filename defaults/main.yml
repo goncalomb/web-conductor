@@ -61,6 +61,9 @@ wc_compose_default_attestations: false
 # for a given domain (all certificates are grouped by the base domain)
 wc_certs_generate_wildcards: true
 
+# cron job hour for certificate renewal (minute is randomized), empty to disable
+wc_certs_renew_cron_hour: "6"
+
 # TODO: extra domains
 
 # certbot email address for Let's Encrypt account registration

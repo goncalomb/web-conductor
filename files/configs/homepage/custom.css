@@ -1,0 +1,9 @@
+/* add mark for services with a link */
+li.service:has(.service-title>a:first-child)::before {
+    content: '';
+    position: absolute;
+    border-top-left-radius: var(--radius-md);
+    border: var(--radius-md) solid var(--color-neutral-500);
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+}

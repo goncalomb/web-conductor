@@ -13,9 +13,11 @@ This project is now an Ansible role (2026). Ansible is required to prepare and d
 
 - [Traefik](https://traefik.io/) router with custom configuration:
   - HTTP and HTTPS entry points (80 and 443);
-  - Access and Traefik logs mounted on the host machine;
-  - Log rotation;
+  - Access and Traefik logs mounted on the host machine, with log rotation;
   - Automatic discovery of Let's Encrypt certificates on the host machine (`/etc/letsencrypt`);
+- [Certbot](https://certbot.eff.org/) configuration:
+  - Automatic domain discovery (from the compose service routes);
+  - Automatic renewal (cron);
 - [WireGuard](https://www.wireguard.com/) from [linuxserver/docker-wireguard](https://github.com/linuxserver/docker-wireguard):
   - Shares the same internal network as the other services;
   - Can be used to protect the admin routes (split-horizon DNS);
@@ -28,7 +30,6 @@ This project is now an Ansible role (2026). Ansible is required to prepare and d
 
 TODO:
 
-- Built-in Certbot configuration;
 - Tempo for tracing;
 - Ansible tasks for backup;
 

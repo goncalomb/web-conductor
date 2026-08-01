@@ -1,6 +1,10 @@
 - name: Install rsync,pipx
   ansible.builtin.apt:
-    name: rsync,pipx
+    name:
+      - cron # for ansible.builtin.cron
+      - pipx # for ansible.builtin.pip (XXX: pipx itself is no longer used)
+      - rsync # for ansible.posix.synchronize
+      - python3-requests # for community.docker.docker_plugin
     cache_valid_time: 3600
   become: true
 

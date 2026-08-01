@@ -8,13 +8,6 @@
       ansible.builtin.apt:
         update_cache: true
 
-    - name: Install dependencies
-      ansible.builtin.apt:
-        name:
-          - cron # for ansible.builtin.cron
-          - python3-requests # for community.docker.docker_plugin
-        cache_valid_time: 3600
-
     - name: Include setup tasks
       ansible.builtin.include_role:
         name: goncalomb.web-conductor

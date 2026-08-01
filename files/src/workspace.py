@@ -1,3 +1,5 @@
+import os
+
 from .compose import compose_files_find
 from .utils import FatalError, call_process, print_err
 
@@ -10,6 +12,7 @@ def workspace_update(cfg):
                 './scripts/repo-update.sh',
                 config.service_name, config.repo.url,
             ], env={
+                **os.environ,
                 'GIT_MTIME': '1' if config.repo.mtime else ''
             })
             if status != 0:

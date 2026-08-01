@@ -44,6 +44,13 @@
         'b.test1.localhost',
       ]),
     ),
+    tuple(
+      'test2.localhost',
+      list([
+        'test2.localhost',
+        'a.test2.localhost',
+      ]),
+    ),
   ])
 # ---
 # name: test_process_domains[True]
@@ -80,6 +87,13 @@
       'test1.localhost',
       list([
         '*.test1.localhost',
+      ]),
+    ),
+    tuple(
+      'test2.localhost',
+      list([
+        'test2.localhost',
+        '*.test2.localhost',
       ]),
     ),
   ])

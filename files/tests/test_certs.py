@@ -24,8 +24,13 @@ test_domains = [
     '0.a.b.c.example.net',
 
     'test0.localhost',
+
     'a.test1.localhost',
     'b.test1.localhost',
+
+    # just one subdomain should be enough to generate a wildcard
+    'test2.localhost',
+    'a.test2.localhost',
 
     # duplicates are removed
     'xyz.example.com',

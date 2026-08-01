@@ -30,7 +30,7 @@ class _DomainTreeNode:
         name = f'{self.label}.{suffix}' if suffix else self.label
         if self.match and not skip:
             yield name
-        if wildcard := generate_wildcards and sum(node.match for node in self.nodes.values()) > 1:
+        if wildcard := generate_wildcards and any(node.match for node in self.nodes.values()):
             yield f'*.{name}'
         for label in sorted(self.nodes.keys()):
             node = self.nodes[label]

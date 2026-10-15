@@ -13,6 +13,7 @@ class Config(BaseModel):
     compose_logging_options: dict[str, Any]
     compose_default_attestations: bool
     certs_generate_wildcards: bool
+    certs_extra_domains: list[str]
     certbot_email: str
     certbot_staging: bool
     certbot_extra_args: list[str]

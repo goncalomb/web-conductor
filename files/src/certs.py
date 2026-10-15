@@ -56,8 +56,13 @@ def certs_list_domains(cfg: Config, cfc: ComposeFileCollection):
             if domain == suffix or domain.endswith(f'.{suffix}'):
                 return False
         return True
+
+    def all_domains():
+        yield from cfc.get_wc_hosts(cfg)
+        yield from cfg.wc.certs_extra_domains
+
     return certs_process_domains(
-        filter(valid, cfc.get_wc_hosts(cfg)),
+        filter(valid, all_domains()),
         generate_wildcards=cfg.wc.certs_generate_wildcards,
     )
 
